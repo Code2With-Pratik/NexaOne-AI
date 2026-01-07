@@ -88,7 +88,7 @@ export const Footer = () => {
 
         {/* Bottom Section: Copyright */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/30">
-          <p>© 2025 AI SuperApp Inc. All rights reserved.</p>
+          <p>© 2026 AI SuperApp Inc. All rights reserved to <a href="https://github.com/Code2With-Pratik/my-ai-super-app">Code2With-Pratik</a> .</p>
           <div className="flex items-center gap-2">
              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
              <span>All Systems Operational</span>
