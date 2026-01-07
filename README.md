@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# My-AI-Super-App
 
-## Getting Started
+An all-in-one AI platform with a modern landing page and a dynamic dashboard to access AI tools, chat with AI, manage credits/usage, and submit feedback—built with a “super app” mindset (multiple services in one product) to improve retention and convenience. [web:25]
 
-First, run the development server:
+## Features
+- Modern, responsive landing page (fast UI, clear CTA flow). [web:42]
+- Dynamic dashboard with:
+  - AI tools hub (discover, launch, and manage tools).
+  - AI chat system (multi-turn conversations).
+  - Credit system (usage-based access + tracking).
+  - Feedback module (collect issues/suggestions). [web:42]
+- Clean project documentation layout (quick start, env setup, usage). [web:45]
 
+## Tech stack (edit as needed)
+- Frontend: React + Vite + Tailwind CSS
+- Backend: Node.js + Express
+- Database: PostgreSQL (Prisma/ORM)
+- Auth: JWT / OAuth (your choice)
+- Payments/Credits: Stripe/Razorpay (optional)
+
+> Replace this section with your actual stack if different.
+
+## Project structure (suggested)
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+my-ai-super-app/
+  apps/
+    web/                # Landing page + dashboard (frontend)
+    api/                # Backend API
+  packages/
+    ui/                 # Shared UI components
+    config/             # Shared configs (eslint, tsconfig)
+  docs/
+  README.md
