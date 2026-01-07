@@ -67,7 +67,7 @@ export const Features = () => {
   }, []);
 
   return (
-    <section id="features" ref={containerRef} className="py-32 px-6 bg-black text-white relative z-10">
+    <section id="features" ref={containerRef} className="py-32 px-6 bg-transparent text-white relative z-10">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-20 space-y-4">
           <h2 className="text-sm font-mono text-indigo-400 tracking-widest uppercase">
@@ -80,7 +80,7 @@ export const Features = () => {
         </div>
 
         {/* Bento Grid Layout - Ensure height is explicit if empty */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-100">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-[400px]">
           {features.map((item, idx) => (
             <div
               key={idx}

@@ -5,7 +5,7 @@ import { Mail, MapPin, Phone, Send } from "lucide-react";
 
 export const Contact = () => {
   return (
-    <section id="contact" className="py-32 px-6 bg-black text-white relative overflow-hidden">
+    <section id="contact" className="py-32 px-6 bg-transparent text-white relative overflow-hidden">
       {/* Background Gradients */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-[100px]" />
@@ -53,22 +53,22 @@ export const Contact = () => {
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wider text-white/50">First Name</label>
-                <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John" />
+                <input type="text" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wider text-white/50">Last Name</label>
-                <input type="text" className="w-full bg-black/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Doe" />
+                <input type="text" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Doe" />
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-white/50">Email</label>
-              <input type="email" className="w-full bg-black/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@company.com" />
+              <input type="email" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@company.com" />
             </div>
 
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-white/50">Message</label>
-              <textarea className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell us about your project..." />
+              <textarea className="w-full h-32 bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell us about your project..." />
             </div>
 
             <button className="w-full py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">

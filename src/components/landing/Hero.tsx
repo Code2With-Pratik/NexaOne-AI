@@ -29,7 +29,7 @@ export const Hero = () => {
   }, []);
 
   return (
-    <section ref={containerRef} className="relative h-screen w-full overflow-hidden bg-black">
+    <section ref={containerRef} className="relative h-screen w-full overflow-hidden bg-transparent">
       {/* 3D Layer */}
       <div className="absolute inset-0 z-0 scale-110">
         <Spline scene="https://prod.spline.design/6Wq1Q7YGyM-iab9i/scene.splinecode" />

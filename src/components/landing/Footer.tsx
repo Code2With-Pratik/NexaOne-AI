@@ -6,7 +6,7 @@ import { Twitter, Github, Linkedin } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer className="relative bg-black text-white pt-20 overflow-hidden">
+    <footer className="relative bg-transparent text-white pt-20 overflow-hidden">
       
       {/* 1. Animated Wave SVG */}
       <div className="absolute top-0 left-0 w-full overflow-hidden leading-[0] transform rotate-180">

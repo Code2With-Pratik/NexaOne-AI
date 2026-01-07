@@ -9,15 +9,17 @@ export const metadata: Metadata = {
   description: "The future of AI and communication.",
 };
 
-// --- THIS PART IS CRITICAL ---
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+    <html lang="en" className="scroll-smooth">
+      {/* REMOVED bg-black here so globals.css takes over */}
+      <body className={`${inter.className} antialiased text-white`}>
+        {children}
+      </body>
     </html>
   );
 }

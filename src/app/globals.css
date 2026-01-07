@@ -2,6 +2,35 @@
 
 @layer utilities {
   .glass-panel {
-    @apply backdrop-blur-md bg-white/30 border border-white/20 shadow-xl;
+    @apply backdrop-blur-md bg-white/5 border border-white/10 shadow-xl;
   }
+  
+  /* Useful for wrapping 3D elements so they don't block clicks */
+  .pointer-events-none-wrapper > * {
+    pointer-events: auto;
+  }
+}
+
+/* --- THE NEW GLOBAL BACKGROUND --- */
+body {
+  background-color: #050505; /* Deep black base */
+  background-image: 
+    /* 1. The subtle star pattern */
+    radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+    radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+    radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px),
+    /* 2. The central nebula glow (Purple/Blue mix) */
+    radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.25), rgba(15, 23, 42, 0.1) 50%, transparent 100%);
+  background-size: 
+    550px 550px,
+    350px 350px,
+    250px 250px,
+    100% 100%;
+  background-position: 
+    0 0,
+    40px 60px,
+    130px 270px,
+    center center;
+  background-repeat: repeat, repeat, repeat, no-repeat;
+  background-attachment: fixed; /* Makes the background stay in place while scrolling */
 }

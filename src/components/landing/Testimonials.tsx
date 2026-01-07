@@ -37,7 +37,7 @@ export const Testimonials = () => {
     <section 
       id="testimonials" 
       ref={containerRef} 
-      className="py-32 bg-black overflow-hidden border-t border-white/5"
+      className="py-32 bg-transparent overflow-hidden border-t border-white/5"
     >
       <div className="text-center mb-16">
         <h2 className="text-4xl font-bold text-white mb-4">Trusted by Creators</h2>
