@@ -30,7 +30,8 @@
     "react-simple-star-rating": "^5.1.7",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

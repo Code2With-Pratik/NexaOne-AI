@@ -1,26 +1,27 @@
 import { Hero } from "@/components/landing/Hero";
-// You might need to create the About component if you haven't yet, 
-// or remove this import line if you skipped it.
-// import { About } from "@/components/landing/About"; 
+// import { About } from "@/components/landing/About"; // Optional if you added it
 import { Features } from "@/components/landing/Features";
 import { Testimonials } from "@/components/landing/Testimonials";
+import { Contact } from "@/components/landing/Contact";
+import { Footer } from "@/components/landing/Footer";
 
 export default function LandingPage() {
   return (
     <main className="flex flex-col w-full min-h-screen bg-black">
-      {/* 1. Hero (3D & Parallax) */}
+      {/* 1. Hero Section (3D & Parallax) */}
       <Hero />
 
-      {/* 2. Features (Bento Grid) */}
+      {/* 2. Features Grid (Bento Style) */}
       <Features />
 
       {/* 3. Testimonials (Reverse Scroll Slider) */}
       <Testimonials />
       
-      {/* 4. Footer Placeholder */}
-      <div className="h-64 flex items-center justify-center border-t border-white/10">
-        <p className="text-gray-500">Footer Coming Soon...</p>
-      </div>
+      {/* 4. Contact Form (Glassmorphism) */}
+      <Contact />
+
+      {/* 5. Footer (Animated Waves) */}
+      <Footer />
     </main>
   );
 }
