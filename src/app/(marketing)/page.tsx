@@ -8,7 +8,7 @@ import { Footer } from "@/components/landing/Footer";
 
 export default function LandingPage() {
   return (
-    <main className="flex flex-col w-full min-h-screen bg-black">
+    <main className="flex flex-col w-full min-h-screen bg-transparent">
       {/* 1. Hero Section */}
       <Hero />
 

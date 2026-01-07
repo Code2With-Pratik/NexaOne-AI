@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+// Import the new component
+import { StarBackground } from "@/components/ui/StarBackground";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,9 +18,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      {/* REMOVED bg-black here so globals.css takes over */}
+      {/* Ensure base text color is white */}
       <body className={`${inter.className} antialiased text-white`}>
-        {children}
+        {/* Mount the animated background here */}
+        <StarBackground />
+        
+        {/* Your app content sits on top */}
+        <div className="relative z-10">
+           {children}
+        </div>
       </body>
     </html>
   );
