@@ -25,7 +25,7 @@ export default function ChatPage() {
 
   return (
     // RESPONSIVE FIX: flex-col on mobile, md:flex-row on desktop
-    <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/20 backdrop-blur-xl">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20">
       
       {/* LEFT: Contact List */}
       {/* RESPONSIVE FIX: w-full on mobile, fixed w-80 on desktop. Added basis for mobile height. */}
@@ -79,7 +79,7 @@ export default function ChatPage() {
       {/* RIGHT: Chat Window */}
       <div className="flex-1 flex flex-col bg-transparent h-2/3 md:h-full">
         {/* Chat Header */}
-        <div className="h-16 px-4 md:px-6 border-b border-white/10 flex items-center justify-between bg-black/20">
+        <div className="h-16 px-4 md:px-6 border-b border-white/10 flex items-center justify-between bg-transparent">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 rounded-full bg-linear-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-white shrink-0">
                 A

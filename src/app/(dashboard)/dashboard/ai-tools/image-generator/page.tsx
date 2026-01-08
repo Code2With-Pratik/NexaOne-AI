@@ -27,7 +27,7 @@ export default function ImageGeneratorPage() {
       
       {/* LEFT: Controls */}
       <div className="w-full md:w-80 space-y-6">
-        <div className="p-6 rounded-2xl bg-black backdrop-blur-xl border border-white/25 space-y-6 shadow-xl">
+        <div className="p-6 rounded-2xl border border-white/25 space-y-6 shadow-xl">
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Prompt</label>
             <textarea 
@@ -81,7 +81,7 @@ export default function ImageGeneratorPage() {
       </div>
 
       {/* RIGHT: Gallery / Output */}
-      <div className="flex-1 rounded-2xl bg-transparent border border-white/25 p-6 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 rounded-2xl border border-white/25 p-6 overflow-y-auto custom-scrollbar">
          {prompt && isGenerating ? (
            <div className="h-full flex flex-col items-center justify-center text-white/40">
               <div className="relative w-24 h-24 mb-4">
@@ -93,7 +93,7 @@ export default function ImageGeneratorPage() {
          ) : (
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Main "Latest" Image */}
-              <div className="md:col-span-2 group relative aspect-video rounded-xl overflow-hidden bg-black border border-white/10">
+              <div className="md:col-span-2 group relative aspect-video rounded-xl overflow-hidden bg-black/20 border border-white/10">
                 <img src={sampleImages[0]} alt="Generated" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-black/60 backdrop-blur-sm translate-y-full group-hover:translate-y-0 transition-transform flex items-center justify-between">
                    <p className="text-xs text-white truncate max-w-[200px]">{prompt || "Neon Cityscape"}</p>

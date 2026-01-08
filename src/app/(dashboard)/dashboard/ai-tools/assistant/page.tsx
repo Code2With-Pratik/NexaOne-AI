@@ -49,7 +49,7 @@ export default function AssistantPage() {
 
   return (
     // <div className="h-[calc(100vh-8rem)] w-90 max-w-5xl mx-auto flex flex-col bg-transparent rounded-2xl border border-white/25 overflow-hidden relative shadow-2xl">
-      <div className="h-[calc(100vh-8rem)] w-[90%] md:w-full max-w-5xl mx-auto flex flex-col bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden relative shadow-2xl">
+      <div className="h-[calc(100vh-8rem)] w-[90%] md:w-full max-w-5xl mx-auto flex flex-col rounded-2xl border border-white/25 overflow-hidden relative shadow-2xl">
       {/* Header */}
       <div className="h-16 border-b border-white/10 flex items-center px-4 md:px-6 bg-white/5 backdrop-blur-md z-10">
         <Bot className="w-6 h-6 text-indigo-400 mr-3 shrink-0" />
