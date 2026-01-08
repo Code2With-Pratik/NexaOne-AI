@@ -48,27 +48,27 @@ export const Contact = () => {
         </div>
 
         {/* Right: Form */}
-        <div className="p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl">
+        <div className="p-8 rounded-xl bg-transparent/5 border border-white/25 backdrop-blur-md shadow-2xl">
           <form className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wider text-white/50">First Name</label>
-                <input type="text" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John" />
+                <input type="text" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John" />
               </div>
               <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wider text-white/50">Last Name</label>
-                <input type="text" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Doe" />
+                <input type="text" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Doe" />
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-white/50">Email</label>
-              <input type="email" className="w-full bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@company.com" />
+              <input type="email" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@company.com" />
             </div>
 
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-white/50">Message</label>
-              <textarea className="w-full h-32 bg-transparent/40 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell us about your project..." />
+              <textarea className="w-full h-32 bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell us about your project..." />
             </div>
 
             <button className="w-full py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
