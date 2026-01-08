@@ -44,7 +44,7 @@ export const DynamicNavbar = () => {
       height: isCompact ? "50px" : "70px",
       borderRadius: "9999px",
       duration: 0.8,
-      ease: "elastic.out(1, 0.5)",
+      ease: "elastic.out(1, 0.9)",
     });
   }, [isScrolled, isHovered]);
 
@@ -59,13 +59,13 @@ export const DynamicNavbar = () => {
         className={cn(
           "pointer-events-auto relative flex items-center justify-between px-6 backdrop-blur-xl transition-colors duration-300 overflow-hidden",
           isScrolled && !isHovered
-            ? "bg-black/80 border border-white/10 shadow-2xl cursor-pointer"
+            ? "bg-black/80 border border-white/20 shadow-2xl cursor-pointer"
             : "bg-white/5 border border-white/10 shadow-xl"
         )}
       >
         {/* Capsule Mode (Time) */}
         <div className={cn("absolute inset-0 flex items-center justify-center transition-opacity duration-300", isScrolled && !isHovered ? "opacity-100 delay-100" : "opacity-0")}>
-          <span className="text-white font-mono tracking-wider text-sm pointer-events-none">{time}</span>
+          <span className="text-white font-medium tracking-wider text-sm pointer-events-none">{time}</span>
         </div>
 
         {/* Full Mode (Links) */}

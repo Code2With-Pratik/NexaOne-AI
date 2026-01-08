@@ -6,7 +6,7 @@ import { Twitter, Github, Linkedin } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer className="relative border-t border-white/10 bg-black/20 backdrop-blur-xl pt-24 pb-12 z-50">
+    <footer className="relative border-t border-white/10 bg-transparent pt-24 pb-12 z-50">
       <div className="max-w-7xl mx-auto px-6">
         
         {/* Top Section: Brand & Links */}
