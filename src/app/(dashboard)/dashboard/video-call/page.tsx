@@ -29,7 +29,7 @@ export default function VideoCallPage() {
       <div className="flex-1 p-4 grid grid-cols-2 gap-4">
         {participants.map((p) => (
           <div key={p.id} className="relative group rounded-2xl overflow-hidden bg-[#222] border border-white/5">
-             <img src={p.image} alt={p.name} className="w-full h-full object-cover opacity-90" />
+             <img src={p.image} alt={p.name} className="w-50 h-50 object-cover opacity-90" />
              
              {/* Name Tag */}
              <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-medium text-white flex items-center gap-2">

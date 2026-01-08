@@ -27,7 +27,7 @@ export default function ImageGeneratorPage() {
       
       {/* LEFT: Controls */}
       <div className="w-full md:w-80 space-y-6">
-        <div className="p-6 rounded-2xl bg-[#0A0A0A] border border-white/10 space-y-6">
+        <div className="p-6 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 space-y-6 shadow-xl">
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Prompt</label>
             <textarea 
