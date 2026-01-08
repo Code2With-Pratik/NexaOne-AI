@@ -102,11 +102,15 @@ export const Sidebar = () => {
       {/* Brand Logo */}
       <div className={cn("h-16 flex items-center border-b border-white/10 transition-all", isSidebarOpen ? "px-6" : "justify-center px-0")}>
         <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
-          <span className="font-bold text-white">A</span>
+          <a href="http://localhost:3000/">
+            <span className="font-bold text-white">A</span>
+          </a>
         </div>
         {/* Hide Text if Collapsed */}
         <span className={cn("font-bold text-lg text-white ml-3 transition-opacity duration-200", !isSidebarOpen && "hidden md:hidden opacity-0")}>
-          AI<span className="text-indigo-400">SuperApp</span>
+          <a href="http://localhost:3000/">
+              AI<span className="text-indigo-400">SuperApp</span>
+          </a>
         </span>
       </div>
 

@@ -42,7 +42,9 @@ export default function DashboardLayout({
                120 Credits
              </div>
              {/* User Avatar Placeholder */}
+             <a href="http://localhost:3000/dashboard/settings">
              <div className="w-8 h-8 rounded-full bg-linear-to-br from-indigo-500 to-pink-500" />
+             </a>
           </div>
         </header>
 

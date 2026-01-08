@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 
 const suggestions = [
   "Explain Quantum Computing",
-  "Write a Python script to scrape a website",
-  "Summarize this meeting note",
-  "Debug this React component",
+  "Write a Python script",
+  "Summarize this note",
+  "Debug this React code",
 ];
 
 export default function AssistantPage() {
@@ -48,11 +48,11 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] max-w-5xl mx-auto flex flex-col bg-[#0A0A0A] rounded-2xl border border-white/10 overflow-hidden relative shadow-2xl">
-      
+    // <div className="h-[calc(100vh-8rem)] w-90 max-w-5xl mx-auto flex flex-col bg-transparent rounded-2xl border border-white/25 overflow-hidden relative shadow-2xl">
+      <div className="h-[calc(100vh-8rem)] w-[90%] md:w-full max-w-5xl mx-auto flex flex-col bg-black/20 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden relative shadow-2xl">
       {/* Header */}
-      <div className="h-16 border-b border-white/10 flex items-center px-6 bg-white/5 backdrop-blur-md z-10">
-        <Bot className="w-6 h-6 text-indigo-400 mr-3" />
+      <div className="h-16 border-b border-white/10 flex items-center px-4 md:px-6 bg-white/5 backdrop-blur-md z-10">
+        <Bot className="w-6 h-6 text-indigo-400 mr-3 shrink-0" />
         <div>
           <h3 className="font-bold text-white text-sm">Super Assistant</h3>
           <p className="text-xs text-white/40">Powered by GPT-4</p>
@@ -60,9 +60,9 @@ export default function AssistantPage() {
       </div>
 
       {/* Chat Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar scroll-smooth">
         {messages.map((msg) => (
-          <div key={msg.id} className={cn("flex gap-4", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
+          <div key={msg.id} className={cn("flex gap-3 md:gap-4", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
             
             {/* Avatar */}
             <div className={cn(
@@ -74,7 +74,7 @@ export default function AssistantPage() {
 
             {/* Bubble */}
             <div className={cn(
-              "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed",
+              "max-w-[85%] md:max-w-[80%] p-3 md:p-4 rounded-2xl text-sm leading-relaxed",
               msg.role === "user" 
                 ? "bg-white text-black rounded-tr-none" 
                 : "bg-white/5 border border-white/10 text-white/90 rounded-tl-none"
@@ -105,16 +105,16 @@ export default function AssistantPage() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#0A0A0A] border-t border-white/10 space-y-4">
+      <div className="p-3 md:p-4 bg-[#0A0A0A] border-t border-white/10 space-y-4">
         
-        {/* Suggestion Chips */}
+        {/* Suggestion Chips - Horizontal Scroll */}
         {messages.length === 1 && (
           <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
             {suggestions.map((s, i) => (
               <button 
                 key={i} 
                 onClick={() => setInput(s)}
-                className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all"
+                className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all shrink-0"
               >
                 {s}
               </button>
@@ -133,7 +133,7 @@ export default function AssistantPage() {
           <button 
             onClick={handleSend}
             disabled={!input || isTyping}
-            className="p-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-0.5"
+            className="p-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-0.5 shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>

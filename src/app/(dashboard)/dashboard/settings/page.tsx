@@ -57,7 +57,7 @@ export default function SettingsPage() {
         </div>
 
         {/* RIGHT: Content Area */}
-        <div className="flex-1 bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-xl">
+        <div className="flex-1 bg-transparent border border-white/25 rounded-2xl p-8 shadow-xl">
           {activeTab === "profile" && <ProfileSection />}
           {activeTab === "account" && <AccountSection />}
           {activeTab === "billing" && <BillingSection />}
@@ -74,7 +74,7 @@ export default function SettingsPage() {
 const ProfileSection = () => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center gap-6 pb-8 border-b border-white/10">
+      <div className="flex items-center gap-6 pb-8 border-b border-white/25">
         <div className="relative group">
            <div className="w-24 h-24 rounded-full bg-linear-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop" alt="Profile" className="w-full h-full object-cover opacity-90" />

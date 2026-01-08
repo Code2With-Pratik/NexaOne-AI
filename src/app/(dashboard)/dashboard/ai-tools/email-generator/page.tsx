@@ -48,7 +48,7 @@ Best regards,
       
       {/* LEFT: Input Form */}
       <div className="w-full md:w-1/3 space-y-6">
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 space-y-5 shadow-xl">
+        <div className="bg-transparent border border-white/25 rounded-2xl p-6 space-y-5 shadow-xl">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-indigo-500/20 rounded-lg"><Mail className="w-5 h-5 text-indigo-400" /></div>
             <h2 className="font-bold text-white">Email Details</h2>
@@ -108,7 +108,7 @@ Best regards,
       </div>
 
       {/* RIGHT: Preview Pane */}
-      <div className="flex-1 bg-[#0A0A0A] border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-xl relative">
+      <div className="flex-1 bg-transparent border border-white/25 rounded-2xl flex flex-col overflow-hidden shadow-xl relative">
         <div className="h-14 border-b border-white/10 bg-white/5 flex items-center justify-between px-6">
           <span className="text-xs font-mono text-white/40">PREVIEW</span>
           <div className="flex gap-2">

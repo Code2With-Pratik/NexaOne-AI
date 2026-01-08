@@ -44,7 +44,7 @@ export default function CaptionGeneratorPage() {
       
       {/* LEFT: Input Configuration */}
       <div className="w-full md:w-1/3 space-y-6">
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 space-y-6">
+        <div className="bg-transparent border border-white/25 rounded-2xl p-6 space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <div className="p-2 bg-pink-500/20 rounded-lg"><Hash className="w-5 h-5 text-pink-400" /></div>
             <h2 className="font-bold text-white">Caption Details</h2>
@@ -98,8 +98,8 @@ export default function CaptionGeneratorPage() {
       </div>
 
       {/* RIGHT: Results */}
-      <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pb-10">
-        <h3 className="text-sm font-semibold text-white/60 px-2">Generated Options</h3>
+      <div className="flex-1 space-y-4 rounded-sm border border-white/25 overflow-y-auto custom-scrollbar pb-10">
+        <h3 className="text-sm font-semibold text-white/60 px-2 py-2">Generated Options</h3>
         
         {captions.length > 0 ? (
           <div className="grid gap-4">

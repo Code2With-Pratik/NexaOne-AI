@@ -46,7 +46,7 @@ We are just scratching the surface of what is possible. The next decade will be 
       
       {/* LEFT: Configuration */}
       <div className="w-full md:w-96 space-y-6">
-        <div className="p-6 rounded-2xl bg-[#0A0A0A] border border-white/10 space-y-6">
+        <div className="p-6 rounded-2xl bg-transparent border border-white/25 space-y-6">
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Article Topic</label>
             <input 
@@ -103,7 +103,7 @@ We are just scratching the surface of what is possible. The next decade will be 
       </div>
 
       {/* RIGHT: Output Editor */}
-      <div className="flex-1 rounded-2xl bg-[#0A0A0A] border border-white/10 flex flex-col overflow-hidden">
+      <div className="flex-1 rounded-2xl bg-transparent border border-white/25 flex flex-col overflow-hidden">
         {/* Toolbar */}
         <div className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-white/5">
            <div className="flex items-center gap-2 text-white/50 text-xs font-mono">
@@ -131,7 +131,7 @@ We are just scratching the surface of what is possible. The next decade will be 
                </pre>
              </div>
            ) : (
-             <div className="h-full flex flex-col items-center justify-center text-white/20">
+             <div className="h-full flex flex-col items-center justify-center text-white/50">
                 <PenTool className="w-16 h-16 mb-4 opacity-20" />
                 <p>Ready to write. Enter a topic to begin.</p>
              </div>

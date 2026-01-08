@@ -37,7 +37,7 @@ export default function SearchEnginePage() {
 
         <form onSubmit={handleSearch} className="relative group w-full max-w-2xl mx-auto">
           <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          <div className="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-full px-6 py-4 focus-within:border-indigo-500/50 shadow-2xl">
+          <div className="relative flex items-center bg-[#0A0A0A] border border-white/25 rounded-full px-6 py-4 focus-within:border-indigo-500/50 shadow-2xl">
             <Search className="w-5 h-5 text-white/40 mr-4" />
             <input 
               type="text" 

@@ -23,11 +23,11 @@ export default function ImageGeneratorPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-6">
+    <div className=" bg-transparent max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-6">
       
       {/* LEFT: Controls */}
       <div className="w-full md:w-80 space-y-6">
-        <div className="p-6 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 space-y-6 shadow-xl">
+        <div className="p-6 rounded-2xl bg-black backdrop-blur-xl border border-white/25 space-y-6 shadow-xl">
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Prompt</label>
             <textarea 
@@ -81,7 +81,7 @@ export default function ImageGeneratorPage() {
       </div>
 
       {/* RIGHT: Gallery / Output */}
-      <div className="flex-1 rounded-2xl bg-[#0A0A0A] border border-white/10 p-6 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 rounded-2xl bg-transparent border border-white/25 p-6 overflow-y-auto custom-scrollbar">
          {prompt && isGenerating ? (
            <div className="h-full flex flex-col items-center justify-center text-white/40">
               <div className="relative w-24 h-24 mb-4">
