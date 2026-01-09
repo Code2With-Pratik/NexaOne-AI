@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAppStore } from "@/lib/store"; // Import the store
+import { useAppStore } from "@/lib/store";
+import { useClerk } from "@clerk/nextjs"; // <--- 1. IMPORT CLERK HOOK
 import { 
   LayoutDashboard, 
   MessageSquare, 
@@ -22,7 +23,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Define the structure for sidebar items
 type SidebarItem = {
   name: string;
   icon: React.ElementType;
@@ -70,13 +70,14 @@ const sidebarItems: SidebarItem[] = [
 
 export const Sidebar = () => {
   const pathname = usePathname();
-  const { isSidebarOpen } = useAppStore(); // Get state from store
+  const { isSidebarOpen } = useAppStore();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
+  
+  // 2. GET SIGN OUT FUNCTION
+  const { signOut } = useClerk();
 
   const toggleMenu = (name: string) => {
-    // Only allow toggling if sidebar is open
     if (!isSidebarOpen) return;
-    
     setOpenMenus((prev) => 
       prev.includes(name) 
         ? prev.filter((item) => item !== name)
@@ -91,8 +92,6 @@ export const Sidebar = () => {
     <aside 
       className={cn(
         "h-screen bg-black/20 backdrop-blur-xl border-r border-white/10 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out",
-        // Desktop: w-64 (Open) vs w-20 (Closed)
-        // Mobile: translate-x-0 (Open) vs -translate-x-full (Closed/Hidden)
         isSidebarOpen 
           ? "w-64 translate-x-0" 
           : "w-64 -translate-x-full md:translate-x-0 md:w-20"
@@ -106,10 +105,9 @@ export const Sidebar = () => {
             <span className="font-bold text-white">A</span>
           </a>
         </div>
-        {/* Hide Text if Collapsed */}
         <span className={cn("font-bold text-lg text-white ml-3 transition-opacity duration-200", !isSidebarOpen && "hidden md:hidden opacity-0")}>
           <a href="http://localhost:3000/">
-              AI<span className="text-indigo-400">SuperApp</span>
+             AI<span className="text-indigo-400">SuperApp</span>
           </a>
         </span>
       </div>
@@ -118,34 +116,27 @@ export const Sidebar = () => {
       <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
         {sidebarItems.map((item) => (
           <div key={item.name}>
-            
-            {/* 1. Logic for Items with Submenus */}
             {item.subItems ? (
               <>
                 <button
                   onClick={() => toggleMenu(item.name)}
                   className={cn(
                     "w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer",
-                    // If closed, center the icon
                     !isSidebarOpen && "justify-center", 
-                    // If open, space between
                     isSidebarOpen && "justify-between",
                     isChildActive(item) ? "bg-white/5 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
                   )}
-                  title={!isSidebarOpen ? item.name : undefined} // Tooltip on hover when closed
+                  title={!isSidebarOpen ? item.name : undefined}
                 >
                   <div className="flex items-center gap-3">
                     <item.icon className={cn("w-5 h-5 shrink-0", isChildActive(item) ? "text-indigo-400" : item.color)} />
                     {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
                   </div>
-                  
-                  {/* Arrows - Only show if sidebar is open */}
                   {isSidebarOpen && (
                     openMenus.includes(item.name) ? <ChevronDown className="w-4 h-4 text-white/40" /> : <ChevronRight className="w-4 h-4 text-white/40" />
                   )}
                 </button>
 
-                {/* Sub Menu - Only show if Sidebar AND Menu are Open */}
                 {openMenus.includes(item.name) && isSidebarOpen && (
                   <div className="ml-4 pl-4 border-l border-white/10 space-y-1 mb-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     {item.subItems.map((sub) => (
@@ -165,7 +156,6 @@ export const Sidebar = () => {
                 )}
               </>
             ) : (
-              // 2. Logic for Standard Links
               <Link
                 href={item.href!}
                 className={cn(
@@ -185,16 +175,19 @@ export const Sidebar = () => {
 
       {/* Footer / Logout */}
       <div className={cn("border-t border-white/10 transition-all", isSidebarOpen ? "p-4" : "p-2")}>
-        <button className={cn(
-          "flex items-center w-full rounded-xl text-red-400 hover:bg-red-500/10 transition-colors group cursor-pointer",
-          isSidebarOpen ? "px-3 py-2.5 gap-3" : "justify-center py-3"
-        )}>
+        <button 
+          // 3. ATTACH LOGOUT FUNCTIONALITY
+          onClick={() => signOut({ redirectUrl: '/' })}
+          className={cn(
+            "flex items-center w-full rounded-xl text-red-400 hover:bg-red-500/10 transition-colors group cursor-pointer",
+            isSidebarOpen ? "px-3 py-2.5 gap-3" : "justify-center py-3"
+          )}
+        >
           <LogOut className="w-5 h-5 group-hover:text-red-500 shrink-0" />
           {isSidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
         </button>
       </div>
 
-      {/* Close Button for Mobile View */}
       <button
         onClick={() => useAppStore.setState({ isSidebarOpen: false })}
         className="absolute top-4 right-4 text-white rounded-full p-2 md:hidden"

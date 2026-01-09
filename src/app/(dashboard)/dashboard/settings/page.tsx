@@ -1,26 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  User, 
-  Shield, 
-  CreditCard, 
-  Bell, 
-  Camera, 
-  Check, 
-  Smartphone, 
-  Mail,
-  Moon,
-  Zap,
-  LogOut
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { 
+  CreditCard, 
+  Bell
+} from "lucide-react";
 
-// Define the available tabs
-type Tab = "profile" | "account" | "billing" | "notifications";
+// Define the available tabs (Only Billing & Notifications)
+type Tab = "billing" | "notifications";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  // Set default tab to "billing" since profile is gone
+  const [activeTab, setActiveTab] = useState<Tab>("billing");
 
   return (
     <div className="max-w-6xl mx-auto min-h-[calc(100vh-8rem)]">
@@ -30,18 +22,6 @@ export default function SettingsPage() {
         
         {/* LEFT: Settings Navigation */}
         <div className="w-full md:w-64 space-y-2">
-          <SettingsTab 
-            label="My Profile" 
-            icon={User} 
-            active={activeTab === "profile"} 
-            onClick={() => setActiveTab("profile")} 
-          />
-          <SettingsTab 
-            label="Account Security" 
-            icon={Shield} 
-            active={activeTab === "account"} 
-            onClick={() => setActiveTab("account")} 
-          />
           <SettingsTab 
             label="Billing & Plans" 
             icon={CreditCard} 
@@ -58,8 +38,6 @@ export default function SettingsPage() {
 
         {/* RIGHT: Content Area */}
         <div className="flex-1 bg-transparent border border-white/25 rounded-2xl p-8 shadow-xl">
-          {activeTab === "profile" && <ProfileSection />}
-          {activeTab === "account" && <AccountSection />}
           {activeTab === "billing" && <BillingSection />}
           {activeTab === "notifications" && <NotificationsSection />}
         </div>
@@ -70,102 +48,6 @@ export default function SettingsPage() {
 }
 
 // --- SUB-COMPONENTS FOR EACH SECTION ---
-
-const ProfileSection = () => {
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center gap-6 pb-8 border-b border-white/25">
-        <div className="relative group">
-           <div className="w-24 h-24 rounded-full bg-linear-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-3xl font-bold text-white overflow-hidden">
-             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop" alt="Profile" className="w-full h-full object-cover opacity-90" />
-           </div>
-           <button className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-             <Camera className="w-6 h-6 text-white" />
-           </button>
-        </div>
-        <div>
-          <h3 className="text-xl font-bold text-white">Alex Rivet</h3>
-          <p className="text-white/50 text-sm">Product Designer</p>
-          <button className="mt-2 text-xs text-indigo-400 hover:text-indigo-300 font-medium">Change Avatar</button>
-        </div>
-      </div>
-
-      <form className="space-y-6 max-w-lg">
-        <div className="grid grid-cols-2 gap-6">
-           <div className="space-y-2">
-             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">First Name</label>
-             <input type="text" defaultValue="Alex" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
-           </div>
-           <div className="space-y-2">
-             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Last Name</label>
-             <input type="text" defaultValue="Rivet" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
-           </div>
-        </div>
-
-        <div className="space-y-2">
-           <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Email Address</label>
-           <input type="email" defaultValue="alex@example.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
-        </div>
-
-        <div className="space-y-2">
-           <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Bio</label>
-           <textarea className="w-full h-32 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none" defaultValue="Passionate about AI and Design." />
-        </div>
-
-        <div className="pt-4">
-          <button type="button" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-sm transition-colors">
-            Save Changes
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
-const AccountSection = () => {
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h3 className="text-lg font-bold text-white mb-1">Password</h3>
-        <p className="text-white/50 text-sm mb-6">Update your password to keep your account secure.</p>
-        
-        <div className="space-y-4 max-w-md">
-           <input type="password" placeholder="Current Password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
-           <input type="password" placeholder="New Password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
-           <button className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold text-sm transition-colors">
-             Update Password
-           </button>
-        </div>
-      </div>
-
-      <div className="pt-8 border-t border-white/10">
-        <h3 className="text-lg font-bold text-white mb-4">Two-Factor Authentication</h3>
-        <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
-           <div className="flex items-center gap-4">
-              <div className="p-3 bg-indigo-500/20 rounded-lg text-indigo-400">
-                <Smartphone className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="font-medium text-white">Authenticator App</p>
-                <p className="text-xs text-white/50">Secure your account with Google Authenticator.</p>
-              </div>
-           </div>
-           <button className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold border border-green-500/20">
-             Enabled
-           </button>
-        </div>
-      </div>
-
-       <div className="pt-8 border-t border-white/10">
-         <h3 className="text-lg font-bold text-red-400 mb-2">Danger Zone</h3>
-         <p className="text-white/50 text-sm mb-4">Once you delete your account, there is no going back.</p>
-         <button className="px-6 py-3 border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
-           <LogOut className="w-4 h-4" /> Delete Account
-         </button>
-       </div>
-    </div>
-  );
-};
 
 const BillingSection = () => {
   return (
