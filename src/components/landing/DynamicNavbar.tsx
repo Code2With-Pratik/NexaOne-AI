@@ -5,13 +5,17 @@ import Link from "next/link";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LayoutDashboard } from "lucide-react";
+import { useAuth, UserButton } from "@clerk/nextjs"; // 1. Import Clerk
 
 export const DynamicNavbar = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [time, setTime] = useState("");
+  
+  // 2. Get Auth Status
+  const { isSignedIn } = useAuth();
 
   useEffect(() => {
     const updateTime = () => {
@@ -49,13 +53,11 @@ export const DynamicNavbar = () => {
   }, [isScrolled, isHovered]);
 
   return (
-    // FIX 1: z-[100] ensures it is above the 3D Spline Canvas
-    <div className="fixed top-6 left-0 right-0 z-100 flex justify-center pointer-events-none">
+    <div className="fixed top-6 left-0 right-0 z-[100] flex justify-center pointer-events-none">
       <div
         ref={containerRef}
         onMouseEnter={() => isScrolled && setIsHovered(true)}
         onMouseLeave={() => isScrolled && setIsHovered(false)}
-        // FIX 2: pointer-events-auto re-enables clicking. 
         className={cn(
           "pointer-events-auto relative flex items-center justify-between px-6 backdrop-blur-xl transition-colors duration-300 overflow-hidden",
           isScrolled && !isHovered
@@ -73,7 +75,7 @@ export const DynamicNavbar = () => {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group relative z-10 cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
               <span className="text-white font-bold text-lg">A</span>
             </div>
             <span className="font-bold text-xl tracking-tight text-white hidden sm:block">
@@ -81,13 +83,12 @@ export const DynamicNavbar = () => {
             </span>
           </Link>
 
-          {/* Nav Links */}
+          {/* Nav Links - Hidden on small mobile */}
           <div className="hidden md:flex items-center gap-8">
-            {["Features", "Dashboard", "Testimonials", "Pricing"].map((item) => (
+            {["Features", "Testimonials", "Pricing"].map((item) => (
               <Link 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
-                // FIX 3: Explicit cursor-pointer and hover colors
                 className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer relative z-10"
               >
                 {item}
@@ -95,13 +96,34 @@ export const DynamicNavbar = () => {
             ))}
           </div>
 
-          {/* Auth Buttons */}
+          {/* Auth Buttons (Dynamic) */}
           <div className="flex items-center gap-4 relative z-10">
-             <Link href="/sign-in" className="text-sm text-white/80 hover:text-white hidden sm:block cursor-pointer">Login</Link>
-             <Link href="/dashboard" className="px-5 py-2 rounded-full bg-white text-black font-semibold text-sm hover:bg-indigo-50 transition-all flex items-center gap-2 cursor-pointer hover:scale-105">
-              Start Free <ArrowRight className="w-4 h-4" />
-            </Link>
+             {isSignedIn ? (
+               // --- LOGGED IN VIEW ---
+               <>
+                 <Link href="/dashboard">
+                   <button className="px-5 py-2 rounded-full bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition-all flex items-center gap-2 hover:scale-105 shadow-lg shadow-indigo-500/25">
+                     <LayoutDashboard className="w-4 h-4" /> Dashboard
+                   </button>
+                 </Link>
+                 {/* User Profile Icon */}
+                 <div className="w-8 h-8 flex items-center justify-center">
+                    <UserButton afterSignOutUrl="/" />
+                 </div>
+               </>
+             ) : (
+               // --- LOGGED OUT VIEW ---
+               <>
+                 <Link href="/sign-in" className="text-sm text-white/80 hover:text-white hidden sm:block cursor-pointer">
+                    Login
+                 </Link>
+                 <Link href="/sign-up" className="px-5 py-2 rounded-full bg-white text-black font-semibold text-sm hover:bg-indigo-50 transition-all flex items-center gap-2 cursor-pointer hover:scale-105">
+                    Start Free <ArrowRight className="w-4 h-4" />
+                 </Link>
+               </>
+             )}
           </div>
+
         </div>
       </div>
     </div>
