@@ -43,7 +43,7 @@ export const Hero = () => {
           
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-md mb-8 animate-fade-in-up">
             <Sparkles className="w-4 h-4 text-yellow-400" />
-            <span className="text-sm font-medium text-white/90">Gen-AI 2.0 is Here</span>
+            <span className="text-sm font-medium text-white/90">NexaAI 4.0 is Here</span>
           </div>
 
           <h1 className="text-5xl md:text-8xl font-bold tracking-tighter text-white mb-6 animate-fade-in-up [animation-delay:200ms]">
