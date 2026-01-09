@@ -3,20 +3,25 @@
 import React, { useState } from "react";
 import { ArrowRight, Zap, MessageSquare } from "lucide-react";
 import { Rating } from "react-simple-star-rating";
+import { useUser } from "@clerk/nextjs"; // <--- IMPORT CLERK HOOK
 
 export default function DashboardHome() {
+  const { user, isLoaded } = useUser(); // <--- GET USER DATA
   const [rating, setRating] = useState(0);
 
-  // Handle Rating Logic (Placeholder)
+  // Handle Rating Logic
   const handleRating = (rate: number) => setRating(rate);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
+    <div className="space-y-10">
       
       {/* Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-500/20 p-8 md:p-12">
         <div className="relative z-10">
-          <h1 className="text-4xl font-bold mb-4">Welcome back, Creator.</h1>
+          {/* DYNAMIC WELCOME MESSAGE */}
+          <h1 className="text-4xl font-bold mb-4">
+             Welcome back, {isLoaded ? (user?.firstName || "Creator") : "..."}.
+          </h1>
           <p className="text-white/60 max-w-xl mb-6">
             You have 120 credits remaining. Your AI tools are ready to deploy.
           </p>
@@ -30,7 +35,6 @@ export default function DashboardHome() {
 
       {/* Quick Stats / Tools */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         {/* Simple Stats for now */}
          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-colors">
             <h3 className="text-white/50 text-sm font-medium mb-2">Total Generated</h3>
             <p className="text-3xl font-bold">1,204 <span className="text-xs text-green-400 font-normal">+12%</span></p>
@@ -41,7 +45,7 @@ export default function DashboardHome() {
          </div>
       </div>
 
-      {/* --- FEEDBACK SECTION (Requested) --- */}
+      {/* --- FEEDBACK SECTION --- */}
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-4">
            <h2 className="text-2xl font-bold">Your Voice Matters</h2>
@@ -65,7 +69,7 @@ export default function DashboardHome() {
                  SVGstyle={{ display: 'inline' }}
                  size={24}
                  transition
-                 fillColor="#818cf8" // Indigo-400
+                 fillColor="#818cf8"
                  emptyColor="#333"
                />
              </div>

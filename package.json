@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.36.6",
+    "@clerk/nextjs": "^6.36.7",
     "@gsap/react": "^2.1.2",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.29",
