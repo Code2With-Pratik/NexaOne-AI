@@ -1,147 +1,202 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, Copy, RefreshCw } from "lucide-react";
+import axios from "axios";
+import { Send, Bot, User, Loader2, Sparkles, Check, Copy } from "lucide-react"; // Added Check and Copy
 import { cn } from "@/lib/utils";
+import { useUser } from "@clerk/nextjs";
+import ReactMarkdown from "react-markdown";
 
-const suggestions = [
-  "Explain Quantum Computing",
-  "Write a Python script",
-  "Summarize this note",
-  "Debug this React code",
-];
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-export default function AssistantPage() {
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([
-    { id: 1, role: "ai", text: "Hello! I'm your personal AI assistant. How can I help you accelerate your workflow today?" }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+// Separate component for the Code Block to handle the "Copied" state individually
+const CodeBlock = ({ children, ...props }: any) => {
+  const [copied, setCopied] = useState(false);
+  const codeRef = useRef<HTMLPreElement>(null);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  const onCopy = () => {
+    if (codeRef.current) {
+      const content = codeRef.current.innerText;
+      navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-  }, [messages]);
-
-  const handleSend = () => {
-    if (!input.trim()) return;
-
-    // 1. Add User Message
-    const userMsg = { id: Date.now(), role: "user", text: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setIsTyping(true);
-
-    // 2. Simulate AI Response
-    setTimeout(() => {
-      const aiMsg = { 
-        id: Date.now() + 1, 
-        role: "ai", 
-        text: "This is a simulated AI response. In a real app, this would connect to the OpenAI API or Anthropic API to give you an intelligent answer based on your prompt." 
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1500);
   };
 
   return (
-    // <div className="h-[calc(100vh-8rem)] w-90 max-w-5xl mx-auto flex flex-col bg-transparent rounded-2xl border border-white/25 overflow-hidden relative shadow-2xl">
-      <div className="h-[calc(100vh-8rem)] w-[90%] md:w-full max-w-5xl mx-auto flex flex-col rounded-2xl border border-white/25 overflow-hidden relative shadow-2xl">
+    <div className="relative group my-4">
+      <div className="absolute right-2 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onCopy}
+          className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 hover:text-white transition-colors"
+        >
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+        </button>
+      </div>
+      <div className="bg-black/40 rounded-lg overflow-hidden border border-white/10">
+        <pre
+          ref={codeRef}
+          className="p-4 overflow-x-auto text-sm leading-relaxed"
+          {...props}
+        >
+          {children}
+        </pre>
+      </div>
+    </div>
+  );
+};
+
+export default function AssistantPage() {
+  const { user } = useUser();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isLoading && scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 10);
+    }
+  }, [isLoading]);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = { role: "user", content: input };
+    const newMessages = [...messages, userMessage];
+
+    setMessages(newMessages);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post("/api/conversation", {
+        messages: newMessages,
+      });
+      setMessages((current) => [...current, response.data]);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="h-[calc(100vh-8rem)] flex flex-col max-w-4xl mx-auto">
       {/* Header */}
-      <div className="h-16 border-b border-white/10 flex items-center px-4 md:px-6 bg-white/5 backdrop-blur-md z-10">
-        <Bot className="w-6 h-6 text-indigo-400 mr-3 shrink-0" />
+      <div className="mb-8 flex items-center gap-4">
+        <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
+          <Bot className="w-8 h-8" />
+        </div>
         <div>
-          <h3 className="font-bold text-white text-sm">Super Assistant</h3>
-          <p className="text-xs text-white/40">Powered by GPT-4</p>
+          <h1 className="text-2xl font-bold text-white">AI Assistant</h1>
+          <p className="text-white/50 text-sm">Chat with the smartest AI. Ask me anything.</p>
         </div>
       </div>
 
       {/* Chat Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar scroll-smooth">
-        {messages.map((msg) => (
-          <div key={msg.id} className={cn("flex gap-3 md:gap-4", msg.role === "user" ? "flex-row-reverse" : "flex-row")}>
-            
-            {/* Avatar */}
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1",
-              msg.role === "ai" ? "bg-indigo-600" : "bg-white/10"
-            )}>
-              {msg.role === "ai" ? <Sparkles className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
-            </div>
+      <div className="flex-1 overflow-y-auto space-y-4 p-4 rounded-2xl bg-black/50 border-3 border-white/15 mb-4 custom-scrollbar">
+        {messages.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-50 p-8">
+            <Sparkles className="w-12 h-12 mb-4 text-indigo-400" />
+            <p className="text-lg font-medium text-white">No messages yet.</p>
+            <p className="text-sm text-white/50">Start the conversation by typing below.</p>
+          </div>
+        )}
 
-            {/* Bubble */}
-            <div className={cn(
-              "max-w-[85%] md:max-w-[80%] p-3 md:p-4 rounded-2xl text-sm leading-relaxed",
-              msg.role === "user" 
-                ? "bg-white text-black rounded-tr-none" 
-                : "bg-white/5 border border-white/10 text-white/90 rounded-tl-none"
-            )}>
-              {msg.text}
-              {msg.role === "ai" && (
-                <div className="mt-3 flex gap-2 border-t border-white/10 pt-2 opacity-0 hover:opacity-100 transition-opacity">
-                   <button className="text-xs text-white/40 hover:text-white flex items-center gap-1"><Copy className="w-3 h-3" /> Copy</button>
-                   <button className="text-xs text-white/40 hover:text-white flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Regenerate</button>
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={cn(
+              "flex gap-4 w-full p-4 rounded-xl text-sm",
+              msg.role === "user"
+                ? "bg-white/10 border border-white/15 ml-auto max-w-[50%]"
+                : "bg-indigo-500/10 border border-indigo-500/50 max-w-[50%]"
+            )}
+          >
+            <div className="shrink-0">
+              {msg.role === "user" ? (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center">
+                  {user?.imageUrl ? (
+                    <img src={user.imageUrl} className="w-full h-full rounded-full" />
+                  ) : (
+                    <User className="w-5 h-5 text-white" />
+                  )}
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                  <Bot className="w-5 h-5 text-white" />
                 </div>
               )}
+            </div>
+
+            <div className="overflow-hidden leading-7 w-full text-white/90">
+              <ReactMarkdown
+                components={{
+                  strong: ({ node, ...props }) => <span className="font-bold text-indigo-300" {...props} />,
+                  p: ({ node, ...props }) => <p className="mb-2 last:mb-0" {...props} />,
+                  ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                  ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
+                  li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                  code: ({ node, ...props }) => {
+                    return <code className="bg-black/30 rounded px-1 py-0.5 text-indigo-200 font-mono text-xs" {...props} />;
+                  },
+                  // UPDATED PRE COMPONENT
+                  pre: ({ node, ...props }) => <CodeBlock {...props} />,
+                }}
+              >
+                {msg.content}
+              </ReactMarkdown>
             </div>
           </div>
         ))}
 
-        {isTyping && (
-          <div className="flex gap-4">
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
-               <Sparkles className="w-4 h-4 text-white" />
+        {isLoading && (
+          <div className="flex gap-4 w-full p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 max-w-[80%]">
+            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
+              <Bot className="w-5 h-5 text-white" />
             </div>
-            <div className="bg-white/5 border border-white/10 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1">
-              <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+            <div className="flex items-center gap-1 pt-2">
+              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
             </div>
           </div>
         )}
+        <div ref={scrollRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 md:p-4 bg-[#0A0A0A] border-t border-white/10 space-y-4">
-        
-        {/* Suggestion Chips - Horizontal Scroll */}
-        {messages.length === 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-            {suggestions.map((s, i) => (
-              <button 
-                key={i} 
-                onClick={() => setInput(s)}
-                className="whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-white/60 hover:bg-white/10 hover:border-indigo-500/50 hover:text-white transition-all shrink-0"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="relative flex items-end gap-2 bg-white/5 border border-white/10 rounded-xl p-2 focus-within:border-indigo-500/50 transition-colors">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && (e.preventDefault(), handleSend())}
-            placeholder="Ask anything..."
-            className="w-full bg-transparent border-none focus:outline-none text-sm text-white max-h-32 min-h-[44px] py-3 px-2 resize-none custom-scrollbar"
-          />
-          <button 
-            onClick={handleSend}
-            disabled={!input || isTyping}
-            className="p-3 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-0.5 shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </div>
-        <p className="text-[10px] text-center text-white/20">
-          AI can make mistakes. Please verify important information.
-        </p>
-      </div>
+      <form onSubmit={onSubmit} className="relative">
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask me something..."
+          disabled={isLoading}
+          className="w-full bg-black/50 border-3 border-white/10 rounded-xl pl-4 pr-14 py-4 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 transition-all disabled:opacity-50 caret-indigo-500"
+        />
+        <button
+          type="submit"
+          disabled={isLoading || !input.trim()}
+          className="absolute right-2 top-2 p-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-white/10 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+        >
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+        </button>
+      </form>
     </div>
   );
 }

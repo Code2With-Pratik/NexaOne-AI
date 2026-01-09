@@ -5,7 +5,8 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
-import { UserButton } from "@clerk/nextjs"; // <--- IMPORT CLERK
+import { UserButton } from "@clerk/nextjs";
+import { StarBackground } from "@/components/ui/StarBackground"; // <--- 1. IMPORT THIS
 
 export default function DashboardLayout({
   children,
@@ -15,14 +16,19 @@ export default function DashboardLayout({
   const { isSidebarOpen, toggleSidebar } = useAppStore();
 
   return (
-    // Locked scroll container (App Mode)
-    <div className="flex h-screen w-full bg-black text-white overflow-hidden">
-      {/* 1. Sidebar Component */}
+    // 2. UPDATED: Removed "bg-black" -> Changed to "bg-transparent" or the stars will be hidden!
+    <div className="flex h-screen w-full bg-transparent text-white overflow-hidden relative">
+      
+      {/* 3. INSERT THE BACKGROUND HERE */}
+      <StarBackground />
+
+      {/* 4. Sidebar Component */}
       <Sidebar />
 
-      {/* 2. Main Content Area */}
+      {/* 5. Main Content Area */}
       <div 
         className={cn(
+          // Added z-10 to ensure content sits above the stars
           "flex-1 flex flex-col h-full transition-all duration-300 relative z-10",
           isSidebarOpen ? "md:ml-72" : "md:ml-20"
         )}
@@ -37,16 +43,15 @@ export default function DashboardLayout({
           </button>
 
           <div className="flex items-center gap-4">
-             {/* Credit Counter */}
-             <div className="px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-mono">
-               120 Credits
-             </div>
-             
-             {/* CLERK USER PROFILE BUTTON */}
-             {/* This replaces the old static <a> tag */}
-             <div className="flex items-center justify-center">
-                <UserButton afterSignOutUrl="/" /> 
-             </div>
+              {/* Credit Counter */}
+              <div className="px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-mono">
+                120 Credits
+              </div>
+              
+              {/* CLERK USER PROFILE BUTTON */}
+              <div className="flex items-center justify-center">
+                 <UserButton afterSignOutUrl="/" /> 
+              </div>
           </div>
         </header>
 
