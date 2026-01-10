@@ -6,18 +6,21 @@ import Peer from "simple-peer";
 import { useUser } from "@clerk/nextjs";
 import { 
   PhoneOff, Mic, MicOff, Video, VideoOff, Monitor, Copy, 
-  ArrowLeft, Check
+  ArrowLeft, Check, PhoneIncoming
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const socket = io("http://localhost:3000");
 
+// 🎵 Ringtone URL (You can replace this with your own file in the public folder)
+const RINGTONE_URL = "/sounds/time_rebel.mp3";
+
 export default function VideoCallPage() {
   const { user } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callId = searchParams.get("callId"); // Get ID from URL
+  const callId = searchParams.get("callId"); 
 
   // --- STATE ---
   const [me, setMe] = useState("");
@@ -41,27 +44,23 @@ export default function VideoCallPage() {
   const userVideo = useRef<HTMLVideoElement>(null);
   const connectionRef = useRef<Peer.Instance | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  
+  // 👇 NEW: Ringtone Ref
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Auto-fill ID from URL
-    if (callId) {
-      setIdToCall(callId);
-    }
+    if (callId) setIdToCall(callId);
 
     if (user) {
       setName(user.fullName || "User");
       
-      // 1. Get Webcam Access
       navigator.mediaDevices.getUserMedia({ video: true, audio: true })
         .then((currentStream) => {
           setStream(currentStream);
           if (myVideo.current) myVideo.current.srcObject = currentStream;
         });
 
-      // 2. Setup Socket
       socket.on("connect", () => {
-        // IMPORTANT: In your custom server.js, socket.id matches the Clerk ID you emitted in "join"
-        // But for WebRTC signaling, we need the *socket ID* specifically for simple-peer routing
         setMe(socket.id); 
       });
 
@@ -74,13 +73,21 @@ export default function VideoCallPage() {
     }
   }, [user, callId]);
 
+  // 👇 NEW: Handle Ringtone Playback
+  useEffect(() => {
+    if (receivingCall && !callAccepted) {
+        // Someone is calling: Play Sound
+        ringtoneRef.current?.play().catch(err => console.log("Audio permission error:", err));
+    } else {
+        // Call answered or ignored: Stop Sound
+        ringtoneRef.current?.pause();
+        if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
+    }
+  }, [receivingCall, callAccepted]);
+
   // --- ACTIONS ---
 
   const callUser = (id: string) => {
-    // Note: In a real app, you need to map Clerk ID (id) -> Socket ID via your server
-    // For now, this assumes 'id' is the socket ID (works if you copy-paste from "Share this ID")
-    // OR if you update server.js to map ClerkID -> SocketID.
-    
     const peer = new Peer({ initiator: true, trickle: false, stream: stream! });
 
     peer.on("signal", (data) => {
@@ -106,6 +113,8 @@ export default function VideoCallPage() {
 
   const answerCall = () => {
     setCallAccepted(true);
+    // Ringtone will stop automatically due to useEffect above
+
     const peer = new Peer({ initiator: false, trickle: false, stream: stream! });
 
     peer.on("signal", (data) => {
@@ -123,20 +132,18 @@ export default function VideoCallPage() {
   const leaveCall = () => {
     setCallEnded(true);
     if (connectionRef.current) connectionRef.current.destroy();
-    window.location.href = "/dashboard/chat"; // Return to chat on end
+    window.location.href = "/dashboard/chat"; 
   };
 
-  // --- SCREEN SHARE LOGIC 🖥️ ---
+  // --- SCREEN SHARE LOGIC ---
   const toggleScreenShare = () => {
     if (!isScreenSharing) {
-      // START SHARE
       navigator.mediaDevices.getDisplayMedia({ cursor: true } as any)
         .then((screenStream) => {
           const screenTrack = screenStream.getVideoTracks()[0];
           screenTrackRef.current = screenTrack;
 
           if (connectionRef.current && stream) {
-            // Replace Camera Track with Screen Track
             const videoTrack = stream.getVideoTracks()[0];
             connectionRef.current.replaceTrack(videoTrack, screenTrack, stream);
           }
@@ -144,10 +151,7 @@ export default function VideoCallPage() {
           if (myVideo.current) myVideo.current.srcObject = screenStream;
           setIsScreenSharing(true);
 
-          // Handle "Stop Sharing" from browser native UI
-          screenTrack.onended = () => {
-             stopScreenShare();
-          };
+          screenTrack.onended = () => { stopScreenShare(); };
         });
     } else {
       stopScreenShare();
@@ -155,11 +159,9 @@ export default function VideoCallPage() {
   };
 
   const stopScreenShare = () => {
-    // STOP SHARE
     if (screenTrackRef.current) {
         screenTrackRef.current.stop(); 
         
-        // Revert to Camera
         if (connectionRef.current && stream) {
             const videoTrack = stream.getVideoTracks()[0];
             connectionRef.current.replaceTrack(screenTrackRef.current, videoTrack, stream);
@@ -170,7 +172,6 @@ export default function VideoCallPage() {
     }
   };
 
-  // --- MUTE/VIDEO TOGGLES ---
   const toggleMic = () => {
     if (stream) {
         stream.getAudioTracks()[0].enabled = !isMicOn;
@@ -195,6 +196,9 @@ export default function VideoCallPage() {
   return (
     <div className="h-[calc(100vh-6rem)] flex flex-col items-center justify-center p-4 bg-gradient-to-br from-gray-900 to-black text-white relative overflow-hidden">
       
+      {/* 👇 HIDDEN AUDIO ELEMENT FOR RINGTONE */}
+      <audio ref={ringtoneRef} src={RINGTONE_URL} loop />
+
       {/* HEADER */}
       <div className="absolute top-4 left-4 z-10">
           <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-all">
@@ -211,7 +215,7 @@ export default function VideoCallPage() {
             <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-sm font-medium backdrop-blur-md">You {isScreenSharing && "(Sharing Screen)"}</div>
         </div>
 
-        {/* USER VIDEO (ONLY SHOW IF CALL ACCEPTED) */}
+        {/* USER VIDEO */}
         {callAccepted && !callEnded && (
             <div className="relative flex-1 h-full w-full max-h-[70vh]">
                 <video playsInline ref={userVideo} autoPlay className="w-full h-full rounded-2xl border-2 border-indigo-500/30 shadow-2xl bg-black object-cover" />
@@ -220,7 +224,7 @@ export default function VideoCallPage() {
         )}
       </div>
 
-      {/* CONTROLS BAR */}
+      {/* CONTROLS */}
       <div className="mt-8 flex items-center gap-4 bg-white/10 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl animate-in slide-in-from-bottom-10">
          <button onClick={toggleMic} className={cn("p-4 rounded-full transition-all", isMicOn ? "bg-white/10 hover:bg-white/20" : "bg-red-500/80 hover:bg-red-500")}>
              {isMicOn ? <Mic className="w-6 h-6" /> : <MicOff className="w-6 h-6" />}
@@ -243,21 +247,21 @@ export default function VideoCallPage() {
 
       {/* CALL NOTIFICATION MODAL */}
       {receivingCall && !callAccepted && (
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-[#1a1a1a] border border-green-500/50 p-6 rounded-2xl shadow-2xl flex items-center gap-6 animate-in slide-in-from-top-10 z-50">
-              <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center animate-pulse">
-                  <PhoneOff className="w-6 h-6 text-green-500" />
+          <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-[#1a1a1a] border border-green-500/50 p-6 rounded-2xl shadow-2xl flex items-center gap-6 animate-in slide-in-from-top-10 z-50 w-96">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center animate-[ping_1s_ease-in-out_infinite]">
+                  <PhoneIncoming className="w-8 h-8 text-green-500" />
               </div>
-              <div>
-                  <h3 className="text-lg font-bold text-white">{name} is calling...</h3>
-                  <p className="text-white/40 text-sm">Incoming Video Call</p>
+              <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white">{name}</h3>
+                  <p className="text-green-400 text-sm font-medium animate-pulse">Incoming Video Call...</p>
               </div>
-              <button onClick={answerCall} className="px-6 py-2 bg-green-500 hover:bg-green-600 text-black font-bold rounded-lg transition-colors">
+              <button onClick={answerCall} className="px-6 py-3 bg-green-500 hover:bg-green-600 text-black font-bold rounded-xl transition-all hover:scale-105 shadow-lg shadow-green-500/20">
                   Answer
               </button>
           </div>
       )}
 
-      {/* ID DISPLAY (FOR TESTING) */}
+      {/* ID DISPLAY */}
       {!callAccepted && (
         <div className="absolute bottom-4 right-4 bg-black/40 backdrop-blur-md p-4 rounded-xl border border-white/10 max-w-sm">
             <p className="text-xs text-white/40 mb-2">Share this ID to receive a call:</p>
