@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // NOW this is allowed because we deleted the config file
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+  
+  sentMessages     Message[] @relation("Sender")
+  receivedMessages Message[] @relation("Receiver")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  type       String
+  
+  senderId   String
+  receiverId String
+  
+  sender     User     @relation("Sender", fields: [senderId], references: [clerkId])
+  receiver   User     @relation("Receiver", fields: [receiverId], references: [clerkId])
+  
+  createdAt  DateTime @default(now())
+}

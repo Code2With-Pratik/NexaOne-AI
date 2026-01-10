@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs"; // <--- Added Import
+import { AuthSync } from "@/components/auth-sync";
 import { dark } from '@clerk/themes'
 import "./globals.css";
 // Import the new component
@@ -32,6 +33,7 @@ export default function RootLayout({
       <html lang="en" className="scroll-smooth">
         {/* Ensure base text color is white */}
         <body className={`${inter.className} antialiased text-white`}>
+          <AuthSync />
           {/* Mount the animated background here */}
           <StarBackground />
           

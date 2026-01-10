@@ -1,188 +1,208 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, Users, MessageSquare, Settings, AlertCircle } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Phone, Monitor, Settings, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { io } from "socket.io-client";
+import Peer from "simple-peer";
 
-const participants = [
-  // ID 1 is reserved for 'You' (Real Camera)
-  { id: 2, name: "Sarah Chen", role: "AI Lead", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop" },
-  { id: 3, name: "Alex Rivet", role: "Designer", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop" },
-  { id: 4, name: "James Wilson", role: "Client", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=400&auto=format&fit=crop" },
-];
+// Configuration
+const MY_ID = 99; // Assume I am User 99
+const USER_TO_CALL = 1; // For demo, we are calling "Alice" (User 1)
 
 export default function VideoCallPage() {
+  // State
+  const [me, setMe] = useState("");
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [receivingCall, setReceivingCall] = useState(false);
+  const [caller, setCaller] = useState("");
+  const [callerSignal, setCallerSignal] = useState<any>(null);
+  const [callAccepted, setCallAccepted] = useState(false);
+  const [callEnded, setCallEnded] = useState(false);
+  const [name, setName] = useState("My Name");
   const [micOn, setMicOn] = useState(true);
   const [cameraOn, setCameraOn] = useState(true);
-  const [error, setError] = useState<string>("");
-  
-  // Real Video State
-  const myVideoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
-  // --- 1. ACCESS WEBCAM ---
+  // Refs
+  const myVideo = useRef<HTMLVideoElement>(null);
+  const userVideo = useRef<HTMLVideoElement>(null);
+  const connectionRef = useRef<Peer.Instance | null>(null);
+  const socket = useRef<any>(null);
+
   useEffect(() => {
-    let mounted = true;
-
-    async function getMedia() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (!mounted) return;
-        
-        streamRef.current = stream;
-        if (myVideoRef.current) {
-          myVideoRef.current.srcObject = stream;
-        }
-        setError("");
-      } catch (err) {
-        console.error("Camera Error:", err);
-        setError("Camera access denied or unavailable.");
+    // 1. Connect Socket
+    socket.current = io("http://localhost:3000", { transports: ["websocket"] });
+    
+    // 2. Get Webcam
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((currentStream) => {
+      setStream(currentStream);
+      if (myVideo.current) {
+        myVideo.current.srcObject = currentStream;
       }
-    }
+    });
 
-    getMedia();
+    // 3. Socket Events
+    socket.current.on("connect", () => {
+       // Join as myself
+       socket.current.emit("join", MY_ID);
+    });
 
-    return () => {
-      mounted = false;
-      // Cleanup: Stop all tracks when component unmounts
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
+    socket.current.on("callUser", (data: any) => {
+      setReceivingCall(true);
+      setCaller(data.from);
+      setName(data.name);
+      setCallerSignal(data.signal);
+    });
+
+    socket.current.on("callEnded", () => {
+      setCallEnded(true);
+      if (connectionRef.current) connectionRef.current.destroy();
+      window.location.reload(); // Quick reset
+    });
+
   }, []);
 
-  // --- 2. TOGGLE CONTROLS ---
+  // --- ACTIONS ---
+
+  const callUser = (id: number) => {
+    const peer = new Peer({ initiator: true, trickle: false, stream: stream! });
+
+    peer.on("signal", (data) => {
+      socket.current.emit("callUser", {
+        userToCall: id,
+        signalData: data,
+        from: MY_ID,
+        name: name
+      });
+    });
+
+    peer.on("stream", (currentStream) => {
+      if (userVideo.current) userVideo.current.srcObject = currentStream;
+    });
+
+    socket.current.on("callAccepted", (signal: any) => {
+      setCallAccepted(true);
+      peer.signal(signal);
+    });
+
+    connectionRef.current = peer;
+  };
+
+  const answerCall = () => {
+    setCallAccepted(true);
+    const peer = new Peer({ initiator: false, trickle: false, stream: stream! });
+
+    peer.on("signal", (data) => {
+      socket.current.emit("answerCall", { signal: data, to: caller });
+    });
+
+    peer.on("stream", (currentStream) => {
+      if (userVideo.current) userVideo.current.srcObject = currentStream;
+    });
+
+    peer.signal(callerSignal);
+    connectionRef.current = peer;
+  };
+
+  const leaveCall = () => {
+    setCallEnded(true);
+    socket.current.emit("endCall", { to: callAccepted ? USER_TO_CALL : caller });
+    if (connectionRef.current) connectionRef.current.destroy();
+    window.location.href = "/dashboard/chat";
+  };
+
+  // Toggle Controls
   const toggleMic = () => {
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach(track => track.enabled = !micOn);
+    if (stream) {
+      stream.getAudioTracks()[0].enabled = !micOn;
       setMicOn(!micOn);
     }
   };
 
   const toggleCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getVideoTracks().forEach(track => track.enabled = !cameraOn);
+    if (stream) {
+      stream.getVideoTracks()[0].enabled = !cameraOn;
       setCameraOn(!cameraOn);
     }
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col bg-black/20 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl">
+    <div className="h-[calc(100vh-8rem)] flex flex-col bg-black/40 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/10 relative shadow-2xl">
       
-      {/* Header Info */}
-      <div className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 flex items-center gap-3">
-        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-        <span className="text-sm font-medium text-white">Weekly Sync</span>
-        <span className="text-xs text-white/50 border-l border-white/20 pl-3">Live</span>
+      {/* HEADER */}
+      <div className="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10 flex items-center gap-3">
+        <div className={cn("w-2 h-2 rounded-full animate-pulse", callAccepted && !callEnded ? "bg-green-500" : "bg-yellow-500")} />
+        <span className="text-sm font-medium text-white">
+           {callAccepted && !callEnded ? "Connected" : receivingCall ? "Incoming Call..." : "Waiting for connection"}
+        </span>
       </div>
 
-      {/* Video Grid */}
-      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto">
+      {/* --- VIDEO GRID --- */}
+      <div className="flex-1 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        {/* --- YOUR TILE (REAL CAM) --- */}
-        <div className="relative group rounded-2xl overflow-hidden bg-[#1a1a1a] border border-white/10 min-h-[200px] shadow-lg">
-           {error ? (
-              <div className="w-full h-full flex flex-col items-center justify-center text-white/40">
-                  <AlertCircle className="w-8 h-8 mb-2 text-red-400" />
-                  <p className="text-xs">{error}</p>
-              </div>
-           ) : (
-              <video 
-                 ref={myVideoRef} 
-                 autoPlay 
-                 muted 
-                 playsInline 
-                 className={cn("w-full h-full object-cover transform scale-x-[-1]", !cameraOn && "opacity-0")} 
-              />
-           )}
-           
-           {/* Camera Off Placeholder */}
-           {!cameraOn && !error && (
-              <div className="absolute inset-0 flex items-center justify-center bg-[#222]">
-                  <div className="w-20 h-20 rounded-full bg-indigo-600 flex items-center justify-center text-xl font-bold text-white">
-                      You
-                  </div>
-              </div>
-           )}
-
-           <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-medium text-white flex items-center gap-2">
-             You (Host) {!micOn && <MicOff className="w-3 h-3 text-red-400" />}
+        {/* MY VIDEO */}
+        <div className="relative rounded-2xl overflow-hidden bg-[#1a1a1a] border border-white/10 shadow-lg">
+           <video ref={myVideo} playsInline muted autoPlay className="w-full h-full object-cover transform scale-x-[-1]" />
+           <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-xs font-medium text-white">
+             You {!micOn && "(Muted)"}
            </div>
         </div>
 
-        {/* --- OTHER PARTICIPANTS (MOCK) --- */}
-        {participants.map((p) => (
-          <div key={p.id} className="relative group rounded-2xl overflow-hidden bg-[#1a1a1a] border border-white/5 min-h-[200px]">
-             <img src={p.image} alt={p.name} className="w-full h-full object-cover opacity-90" />
-             
-             <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-medium text-white flex items-center gap-2">
-               {p.name} <span className="text-white/50">| {p.role}</span>
-             </div>
-
-             <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-2 rounded-full bg-black/50 hover:bg-white/20 text-white transition-colors">
-                  <Settings className="w-4 h-4" />
-                </button>
-             </div>
-          </div>
-        ))}
+        {/* USER VIDEO (Only show if call accepted) */}
+        {callAccepted && !callEnded ? (
+           <div className="relative rounded-2xl overflow-hidden bg-[#1a1a1a] border border-white/10 shadow-lg">
+              <video ref={userVideo} playsInline autoPlay className="w-full h-full object-cover" />
+              <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-lg text-xs font-medium text-white">
+                 Remote User
+              </div>
+           </div>
+        ) : (
+           // Placeholder when waiting
+           <div className="flex flex-col items-center justify-center bg-white/5 rounded-2xl border border-white/5 border-dashed">
+              {receivingCall && !callAccepted ? (
+                 <div className="text-center animate-bounce">
+                    <div className="w-20 h-20 bg-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/50">
+                       <Phone className="w-8 h-8 text-white animate-pulse" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">{name} is calling...</h3>
+                    <button onClick={answerCall} className="bg-green-500 text-white px-8 py-2 rounded-full font-bold hover:bg-green-400 transition-all">
+                       Answer Call
+                    </button>
+                 </div>
+              ) : (
+                 <div className="text-center text-white/30">
+                    <Monitor className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>Waiting for other participant...</p>
+                    <button onClick={() => callUser(USER_TO_CALL)} className="mt-4 px-6 py-2 bg-indigo-600/20 text-indigo-400 rounded-full text-sm hover:bg-indigo-600 hover:text-white transition-all border border-indigo-500/30">
+                       Call Alice (Demo)
+                    </button>
+                 </div>
+              )}
+           </div>
+        )}
       </div>
 
-      {/* Control Bar */}
-      <div className="min-h-20 bg-[#0A0A0A] border-t border-white/10 flex flex-wrap items-center justify-center gap-3 md:gap-4 px-4 py-3 md:px-6 z-20">
-         <ControlBtn 
-           active={micOn} 
-           onClick={toggleMic} 
-           onIcon={<Mic />} 
-           offIcon={<MicOff />} 
-           label="Mic"
-         />
-         <ControlBtn 
-           active={cameraOn} 
-           onClick={toggleCamera} 
-           onIcon={<Video />} 
-           offIcon={<VideoOff />} 
-           label="Cam"
-         />
+      {/* --- CONTROLS --- */}
+      <div className="min-h-20 bg-[#0A0A0A] border-t border-white/10 flex items-center justify-center gap-4 px-6 z-20">
+         <ControlBtn active={micOn} onClick={toggleMic} onIcon={<Mic />} offIcon={<MicOff />} />
+         <ControlBtn active={cameraOn} onClick={toggleCamera} onIcon={<Video />} offIcon={<VideoOff />} />
          
-         <div className="hidden md:block w-px h-8 bg-white/10 mx-2" />
+         <div className="w-px h-8 bg-white/10 mx-2" />
          
-         <div className="flex gap-3">
-            <button className="p-3 md:p-4 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all tooltip" title="Share Screen">
-              <Monitor className="w-5 h-5" />
-            </button>
-            <button className="p-3 md:p-4 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all relative" title="Chat">
-              <MessageSquare className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-3 h-3 bg-indigo-500 border-2 border-[#0A0A0A] rounded-full" />
-            </button>
-            <button className="p-3 md:p-4 rounded-full bg-white/5 hover:bg-white/10 text-white transition-all" title="Participants">
-              <Users className="w-5 h-5" />
-            </button>
-         </div>
-
-         <div className="hidden md:block w-px h-8 bg-white/10 mx-2" />
-
-         <button 
-           onClick={() => window.location.href = '/dashboard'}
-           className="px-4 md:px-6 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-medium flex items-center gap-2 transition-colors ml-auto md:ml-0 shadow-lg shadow-red-500/20"
-         >
-           <PhoneOff className="w-5 h-5" />
-           <span className="hidden sm:inline">End Call</span>
+         <button onClick={leaveCall} className="px-8 py-3 rounded-full bg-red-500 hover:bg-red-600 text-white font-bold flex items-center gap-2 shadow-lg shadow-red-500/20 transition-all hover:scale-105">
+           <PhoneOff className="w-5 h-5" /> End Call
          </button>
       </div>
     </div>
   );
 }
 
-// Improved Helper Component
 const ControlBtn = ({ active, onClick, onIcon, offIcon }: any) => (
   <button 
     onClick={onClick}
     className={cn(
-      "p-3 md:p-4 rounded-full transition-all duration-200 shadow-lg",
-      active 
-        ? "bg-white/10 hover:bg-white/20 text-white" 
-        : "bg-red-500 text-white hover:bg-red-600 animate-pulse"
+      "p-4 rounded-full transition-all duration-200 shadow-lg",
+      active ? "bg-white/10 hover:bg-white/20 text-white" : "bg-red-500 text-white hover:bg-red-600 animate-pulse"
     )}
   >
     {active ? React.cloneElement(onIcon, { size: 20 }) : React.cloneElement(offIcon, { size: 20 })}
