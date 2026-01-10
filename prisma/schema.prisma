@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  // NOW this is allowed because we deleted the config file
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,6 +14,10 @@ model User {
   image     String?
   createdAt DateTime @default(now())
   
+  // New Fields for WhatsApp-like features
+  pinnedChatIds String[] @default([]) 
+  mutedChatIds  String[] @default([])
+
   sentMessages     Message[] @relation("Sender")
   receivedMessages Message[] @relation("Receiver")
 }
@@ -27,6 +29,8 @@ model Message {
   
   senderId   String
   receiverId String
+
+  deletedByIds String[] @default([])
   
   sender     User     @relation("Sender", fields: [senderId], references: [clerkId])
   receiver   User     @relation("Receiver", fields: [receiverId], references: [clerkId])

@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server"; // Commented out for Demo Mode
+import { auth } from "@clerk/nextjs/server";
 
 export async function GET(req: Request) {
   try {
-    // --- DEMO MODE FIX ---
-    // Instead of getting the real Clerk ID, we use "99" to match your frontend
     const { userId } = await auth(); 
-    // ---------------------
-
     const { searchParams } = new URL(req.url);
     const otherUserId = searchParams.get("partnerId");
 
@@ -16,12 +12,24 @@ export async function GET(req: Request) {
       return new NextResponse("Missing IDs", { status: 400 });
     }
 
-    // Fetch conversation between Current User (99) AND Partner (1 or 2)
+    // Fetch conversation between Current User AND Partner
+    // AND ensure the message is NOT deleted by the current user
     const messages = await db.message.findMany({
       where: {
-        OR: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId }
+        AND: [
+          {
+            // Condition 1: Must be between these two users
+            OR: [
+              { senderId: userId, receiverId: otherUserId },
+              { senderId: otherUserId, receiverId: userId }
+            ]
+          },
+          {
+            // Condition 2: Must NOT be deleted by me
+            NOT: {
+              deletedByIds: { has: userId }
+            }
+          }
         ]
       },
       orderBy: {
