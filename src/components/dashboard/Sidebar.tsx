@@ -10,7 +10,8 @@ import {
   MessageSquare, 
   Video, 
   Image as ImageIcon, 
-  PenTool, 
+  PenTool,
+  Phone, 
   Mail, 
   Search, 
   Bot, 
@@ -39,18 +40,9 @@ const sidebarItems: SidebarItem[] = [
     color: "text-sky-500"
   },
   { 
-    name: "Communication", 
-    icon: MessageSquare,
-    color: "text-green-500",
-    subItems: [
-      { name: "Live Chat", href: "/dashboard/chat", icon: MessageSquare, color: "text-emerald-400" },
-      { name: "Video Call", href: "/dashboard/video-call", icon: Video, color: "text-rose-500" },
-    ]
-  },
-  { 
     name: "AI Tools", 
     icon: Sparkles,
-    color: "text-violet-500",
+    color: "text-yellow-400",
     subItems: [
       { name: "Assistant", href: "/dashboard/ai-tools/assistant", icon: Bot, color: "text-indigo-400" },
       { name: "Image Gen", href: "/dashboard/ai-tools/image-generator", icon: ImageIcon, color: "text-pink-500" },
@@ -61,10 +53,20 @@ const sidebarItems: SidebarItem[] = [
     ]
   },
   { 
+    name: "Communication", 
+    icon: MessageSquare,
+    color: "text-orange-500",
+    subItems: [
+      { name: "Live Chat", href: "/dashboard/chat", icon: MessageSquare, color: "text-emerald-400" },
+      { name: "Video Call", href: "/dashboard/video-call", icon: Video, color: "text-yellow-400" },
+      { name: "Call Logs", href: "/dashboard/calls",icon: Phone, color: "text-red-500" }, // Optional: choose a color
+    ]
+  },
+  { 
     name: "Settings", 
     href: "/dashboard/settings", 
     icon: Settings,
-    color: "text-indigo-400"
+    color: "text-green-400"
   },
 ];
 
