@@ -7,6 +7,9 @@ import "./globals.css";
 // Import the new component
 import { StarBackground } from "@/components/ui/StarBackground";
 
+// ✅ CORRECT (New Standard)
+import "@livekit/components-styles";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {

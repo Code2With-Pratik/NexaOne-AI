@@ -19,7 +19,6 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 // Track Online Users (Map: userId -> socketId)
-// We use a Map to instantly look up if a user is online
 const onlineUsers = new Map();
 
 app.prepare().then(() => {
@@ -44,13 +43,11 @@ app.prepare().then(() => {
       io.emit("user_status_update", { userId, status: "Online" });
       
       // Send the list of currently online users to the new person
-      // (So they know who else is online immediately)
       socket.emit("current_online_list", Array.from(onlineUsers.keys()));
     });
 
     // 2. TYPING EVENT: User starts typing
     socket.on("typing", ({ senderId, receiverId }) => {
-      // Send only to the specific receiver
       io.to(receiverId).emit("display_typing", { senderId });
     });
 
@@ -83,22 +80,39 @@ app.prepare().then(() => {
       }
     });
 
-    // 5. CALL EVENTS
-    socket.on("callUser", (data) => {
-        io.to(data.userToCall).emit("callUser", { signal: data.signalData, from: data.from, name: data.name });
+    // 5. CALLING EVENTS (UPDATED FOR LIVEKIT 1-ON-1)
+    
+    // A. Caller starts a call -> Notify Receiver
+    socket.on("outgoing_call", ({ callerId, calleeId, callerName, isVideo, roomId }) => {
+        console.log(`[Call] ${callerId} calling ${calleeId} (Video: ${isVideo}) in room ${roomId}`);
+        
+        // Send notification to the receiver's room
+        io.to(calleeId).emit("incoming_call", { 
+            callerId, 
+            callerName, 
+            isVideo, 
+            roomId 
+        });
     });
-    socket.on("answerCall", (data) => {
-        io.to(data.to).emit("callAccepted", data.signal);
+
+    // B. Receiver Accepts -> Notify Caller to join room
+    socket.on("call_accepted_signal", ({ callerId, roomId }) => {
+        console.log(`[Call] Call accepted by receiver. Notifying caller ${callerId}`);
+        io.to(callerId).emit("call_accepted", { roomId });
+    });
+
+    // C. End Call -> Notify the other person to close the overlay
+    socket.on("end_call", ({ to }) => {
+        console.log(`[Call] End signal sent to ${to}`);
+        io.to(to).emit("call_ended");
     });
 
     // 6. DISCONNECT: User leaves
     socket.on("disconnect", () => {
-      // Find which user disconnected
       for (const [userId, socketId] of onlineUsers.entries()) {
         if (socketId === socket.id) {
           onlineUsers.delete(userId);
           console.log(`User ${userId} went offline.`);
-          // Tell everyone they are offline
           io.emit("user_status_update", { userId, status: "Offline" });
           break;
         }

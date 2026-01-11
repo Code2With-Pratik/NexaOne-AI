@@ -20,6 +20,9 @@ model User {
 
   sentMessages     Message[] @relation("Sender")
   receivedMessages Message[] @relation("Receiver")
+
+  initiatedCalls CallLog[] @relation("InitiatedCalls")
+  receivedCalls  CallLog[] @relation("ReceivedCalls")
 }
 
 model Message {
@@ -36,4 +39,17 @@ model Message {
   receiver   User     @relation("Receiver", fields: [receiverId], references: [clerkId])
   
   createdAt  DateTime @default(now())
+}
+
+model CallLog {
+  id        String   @id @default(uuid())
+  initiatorId String
+  receiverId String? // Nullable for group calls
+  type      String   // "AUDIO" | "VIDEO" | "GROUP"
+  status    String   // "MISSED" | "COMPLETED"
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+
+  initiator User @relation("InitiatedCalls", fields: [initiatorId], references: [clerkId])
+  receiver  User? @relation("ReceivedCalls", fields: [receiverId], references: [clerkId])
 }
