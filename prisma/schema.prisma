@@ -52,4 +52,7 @@ model CallLog {
 
   initiator User @relation("InitiatedCalls", fields: [initiatorId], references: [clerkId])
   receiver  User? @relation("ReceivedCalls", fields: [receiverId], references: [clerkId])
+
+  @@index([initiatorId])
+  @@index([receiverId])
 }

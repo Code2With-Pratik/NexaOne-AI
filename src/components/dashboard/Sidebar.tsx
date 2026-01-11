@@ -12,6 +12,7 @@ import {
   Image as ImageIcon, 
   PenTool,
   Phone, 
+  Users,
   Mail, 
   Search, 
   Bot, 
@@ -58,7 +59,7 @@ const sidebarItems: SidebarItem[] = [
     color: "text-orange-500",
     subItems: [
       { name: "Live Chat", href: "/dashboard/chat", icon: MessageSquare, color: "text-emerald-400" },
-      { name: "Video Call", href: "/dashboard/video-call", icon: Video, color: "text-yellow-400" },
+      { name: "Group Meeting", href: "/dashboard/meeting", icon: Users, color: "text-yellow-400" },
       { name: "Call Logs", href: "/dashboard/calls",icon: Phone, color: "text-red-500" }, // Optional: choose a color
     ]
   },
