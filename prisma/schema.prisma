@@ -56,3 +56,14 @@ model CallLog {
   @@index([initiatorId])
   @@index([receiverId])
 }
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  avatar    String?  // To show their profile pic on the landing page
+  rating    Int      // 1-5 Stars
+  message   String   @db.Text
+  isPublic  Boolean  @default(true) // Set to false if you want to moderate them first
+  createdAt DateTime @default(now())
+}
