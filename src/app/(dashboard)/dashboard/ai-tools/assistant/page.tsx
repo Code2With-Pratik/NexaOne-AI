@@ -28,7 +28,7 @@ const CodeBlock = ({ children, ...props }: any) => {
 
   return (
     <div className="relative group my-4">
-      <div className="absolute right-2 top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute right-2 top-2 z-10 opacity-100 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onCopy}
           className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white/70 hover:text-white transition-colors"
@@ -108,8 +108,8 @@ export default function AssistantPage() {
         </div>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto space-y-4 p-4 rounded-2xl bg-black/50 border-3 border-white/15 mb-4 custom-scrollbar">
+     {/* Chat Area */}
+      <div className="flex-1 overflow-auto space-y-4 p-3 md:p-4 rounded-2xl bg-black/50 border-2 border-white/15 mb-4 custom-scrollbar">
         {messages.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center text-center opacity-50 p-8">
             <Sparkles className="w-12 h-12 mb-4 text-indigo-400" />
@@ -122,17 +122,21 @@ export default function AssistantPage() {
           <div
             key={i}
             className={cn(
-              "flex gap-4 w-full p-4 rounded-xl text-sm",
+              "flex gap-3 md:gap-4 w-full p-3 md:p-4 rounded-xl text-sm",
+              // RESPONSIVE FIX START
+              // Mobile: max-w-[85%] (wider bubbles)
+              // Desktop (md): max-w-[60%] (standard readable width)
               msg.role === "user"
-                ? "bg-white/10 border border-white/15 ml-auto max-w-[50%]"
-                : "bg-indigo-500/10 border border-indigo-500/50 max-w-[50%]"
+                ? "bg-white/10 border border-white/15 ml-auto max-w-[85%] md:max-w-[60%]"
+                : "bg-indigo-500/10 border border-indigo-500/50 max-w-[45%] md:max-w-[80%]"
+              // RESPONSIVE FIX END
             )}
           >
             <div className="shrink-0">
               {msg.role === "user" ? (
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center">
                   {user?.imageUrl ? (
-                    <img src={user.imageUrl} className="w-full h-full rounded-full" />
+                    <img src={user.imageUrl} className="w-full h-full rounded-full" alt="User" />
                   ) : (
                     <User className="w-5 h-5 text-white" />
                   )}
@@ -144,7 +148,8 @@ export default function AssistantPage() {
               )}
             </div>
 
-            <div className="overflow-hidden leading-7 w-full text-white/90">
+            {/* Added min-w-0 to prevent flex child overflow issues on small screens */}
+            <div className="overflow-hidden leading-7 w-full text-white/90 min-w-0">
               <ReactMarkdown
                 components={{
                   strong: ({ node, ...props }) => <span className="font-bold text-indigo-300" {...props} />,
@@ -153,9 +158,8 @@ export default function AssistantPage() {
                   ol: ({ node, ...props }) => <ol className="list-decimal pl-4 mb-2 space-y-1" {...props} />,
                   li: ({ node, ...props }) => <li className="mb-1" {...props} />,
                   code: ({ node, ...props }) => {
-                    return <code className="bg-black/30 rounded px-1 py-0.5 text-indigo-200 font-mono text-xs" {...props} />;
+                    return <code className="bg-black/30 rounded px-1 py-0.5 text-indigo-200 font-mono text-xs break-words" {...props} />;
                   },
-                  // UPDATED PRE COMPONENT
                   pre: ({ node, ...props }) => <CodeBlock {...props} />,
                 }}
               >
@@ -166,7 +170,8 @@ export default function AssistantPage() {
         ))}
 
         {isLoading && (
-          <div className="flex gap-4 w-full p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 max-w-[80%]">
+          // Responsive max-width for loading bubble as well
+          <div className="flex gap-4 w-full p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 max-w-[85%] md:max-w-[60%]">
             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />
             </div>
