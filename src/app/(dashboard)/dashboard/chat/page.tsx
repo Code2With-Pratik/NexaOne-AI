@@ -3,15 +3,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, MoreVertical, Send, Paperclip, Mic, Smile, CheckCheck,
-  Trash2, BellOff, Bell, Pin, PinOff, X, StopCircle, Sticker, ArrowLeft, PhoneIncoming
+  Trash2, BellOff, Bell, Pin, PinOff, X, StopCircle, Sticker, ArrowLeft
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import EmojiPicker from "emoji-picker-react";
-import { io } from "socket.io-client";
 import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import CallOverlay1on1 from "@/components/calls/CallOverlay1on1";
+
+// 👇 IMPORT THE GLOBAL SOCKET HOOK
+import { useSocket } from "@/providers/SocketProvider";
 
 // --- TYPES ---
 type Message = {
@@ -30,15 +32,14 @@ type Contact = {
   name: string;
   avatar: string;
   color: string;
-  status: "Online" | "Offline";
+  status: "Online" | "Offline"; // This will be calculated dynamically
   lastSeen: string;
 };
 
 // --- CONFIG ---
 const STICKERS = ["👻", "🤖", "👽", "🦄", "🔥", "💯", "🎉", "❤️", "🚀", "🍕"];
-const RINGTONE_URL = "/sounds/time_rebel.mp3"; 
 
-// --- DATE HELPER ---
+// --- HELPERS ---
 const formatDateLabel = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
@@ -58,11 +59,15 @@ const getDirectRoomId = (id1: string, id2: string) => {
 };
 
 export default function ChatPage() {
-  const router = useRouter();
   const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // 👇 1. USE GLOBAL SOCKET & ONLINE LIST
+  // We do NOT create a new socket here. We use the one that is always connected.
+  const { socket, onlineUsers } = useSocket(); 
 
   // --- STATE ---
-  const [socket, setSocket] = useState<any>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [conversations, setConversations] = useState<Record<string, Message[]>>({});
   const [activeChatId, setActiveChatId] = useState<string>("");
@@ -81,14 +86,10 @@ export default function ChatPage() {
   const [showChatMenu, setShowChatMenu] = useState(false);
 
   // --- CALLING STATE ---
-  // 👇 UPDATED: Added logId to type
-  const [incomingCall, setIncomingCall] = useState<{ callerId: string, callerName: string, isVideo: boolean, roomId: string, logId: string } | null>(null);
   const [isInCall, setIsInCall] = useState(false);
   const [callToken, setCallToken] = useState("");
   const [currentRoomId, setCurrentRoomId] = useState("");
   const [startWithVideo, setStartWithVideo] = useState(false);
-  
-  // 👇 NEW: Track the current Log ID during a call (for both caller and receiver)
   const [currentLogId, setCurrentLogId] = useState<string>("");
 
   // Refs
@@ -97,89 +98,31 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- 1. INITIALIZE SOCKET ---
+  // --- 2. AUTO-JOIN CALL (From Global Popup) ---
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    const autoJoin = searchParams.get("autoJoin");
+    const roomParam = searchParams.get("roomId");
+    const videoParam = searchParams.get("isVideo") === "true";
+    const logIdParam = searchParams.get("logId");
 
-    const newSocket = io("http://localhost:3000", { transports: ["websocket"] });
-    setSocket(newSocket);
+    // Only join if we have valid params and a socket
+    if (autoJoin && roomParam && socket && user) {
+        console.log("🚀 Auto-joining call from global popup...");
+        
+        setCurrentRoomId(roomParam);
+        setStartWithVideo(videoParam);
+        if(logIdParam) setCurrentLogId(logIdParam);
 
-    newSocket.on("connect", () => {
-      newSocket.emit("join", user.id);
-    });
+        joinLiveKitRoom(roomParam);
+        
+        // Clean URL so refresh doesn't trigger it again
+        window.history.replaceState({}, '', '/dashboard/chat');
+    }
+  }, [searchParams, socket, user]);
 
-    // Chat Listeners
-    newSocket.on("receive_message", (msg: any) => {
-      const formattedMsg: Message = {
-        id: msg.id || Date.now().toString(),
-        text: msg.text || msg.content,
-        senderId: msg.senderId,
-        receiverId: msg.receiverId,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: formatDateLabel(new Date().toISOString()),
-        type: msg.type || "text",
-        status: "read"
-      };
-      const targetChatId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
-      addMessageToState(targetChatId, formattedMsg);
-      if (msg.senderId === activeChatId) setWhoIsTyping(null);
-    });
 
-    newSocket.on("user_status_update", ({ userId, status }: any) => {
-      setContacts(prev => prev.map(c => c.id === userId ? { ...c, status } : c));
-    });
-    newSocket.on("current_online_list", (onlineIds: string[]) => {
-      setContacts(prev => prev.map(c => onlineIds.includes(c.id) ? { ...c, status: "Online" } : { ...c, status: "Offline" }));
-    });
-    newSocket.on("display_typing", ({ senderId }: any) => {
-       if (senderId === activeChatId) setWhoIsTyping(senderId);
-    });
-    newSocket.on("hide_typing", ({ senderId }: any) => {
-       if (senderId === activeChatId) setWhoIsTyping(null);
-    });
-
-    // --- CALL LISTENERS (UPDATED) ---
-
-    // 1. Incoming Call: Capture logId
-    newSocket.on("incoming_call", (data: any) => {
-        if (!isInCall) {
-            console.log("Incoming call data:", data);
-            setIncomingCall(data); // data includes logId
-            if (ringtoneRef.current) ringtoneRef.current.play().catch(e => console.warn(e));
-        }
-    });
-
-    // 2. Call Accepted: Stop ringtone & join
-    newSocket.on("call_accepted", async ({ roomId }: any) => {
-        stopRingtone();
-        await joinLiveKitRoom(roomId);
-    });
-
-    // 3. Call Ended: Cleanup
-    newSocket.on("call_ended", () => {
-        stopRingtone();
-        setIsInCall(false);
-        setCallToken("");
-        setIncomingCall(null);
-        setCurrentLogId(""); // Clear log ID
-    });
-
-    // 4. 👇 NEW: Call Sent Success (For Caller)
-    // The server sends this back immediately after we make a call so we know the log ID
-    newSocket.on("call_sent_success", ({ logId }: any) => {
-        console.log("Call log created:", logId);
-        setCurrentLogId(logId); 
-    });
-
-    return () => { 
-        newSocket.disconnect(); 
-        stopRingtone();
-    };
-  }, [isLoaded, user, activeChatId, isInCall]);
-
-  // --- FETCH DATA ---
+  // --- 3. FETCH DATA (Users & Prefs) ---
   useEffect(() => {
     async function loadData() {
       try {
@@ -195,18 +138,21 @@ export default function ChatPage() {
               setMutedIds(prefData.mutedChatIds || []);
             }
         }
-      } catch (err) { console.error(err); }
+      } catch (err) { console.error("Failed to load contacts", err); }
     }
     loadData();
   }, []);
 
+  // --- 4. FETCH HISTORY (Decoupled from Socket!) ---
   useEffect(() => {
-    if (!activeChatId || !user) return;
+    if (!activeChatId || !user) return; // Note: We do NOT wait for socket here. History loads fast.
+
     const fetchHistory = async () => {
       try {
         const res = await fetch(`/api/chat/history?partnerId=${activeChatId}`);
         const data = await res.json();
         if (!Array.isArray(data)) return;
+
         const formattedMessages = data.map((msg: any) => ({
           id: msg.id,
           text: msg.content,
@@ -217,21 +163,83 @@ export default function ChatPage() {
           type: msg.type as any,
           status: "read"
         }));
+
         setConversations(prev => ({ ...prev, [activeChatId]: formattedMessages }));
       } catch (err) { console.error(err); }
     };
+
     fetchHistory();
   }, [activeChatId, user]);
 
-  // --- CALL FUNCTIONS ---
 
-  const stopRingtone = () => {
-      if (ringtoneRef.current) {
-          ringtoneRef.current.pause();
-          ringtoneRef.current.currentTime = 0;
-      }
-  };
+  // --- 5. SOCKET LISTENERS (Only Chat Specifics) ---
+  useEffect(() => {
+    if (!socket || !user) return;
 
+    // We do NOT listen for "user_status_update" here anymore. 
+    // We rely on the 'onlineUsers' array from the hook.
+
+    // Receive Message
+    const handleReceiveMessage = (msg: any) => {
+      const formattedMsg: Message = {
+        id: msg.id || Date.now().toString(),
+        text: msg.text || msg.content,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: formatDateLabel(new Date().toISOString()),
+        type: msg.type || "text",
+        status: "read"
+      };
+      
+      const targetChatId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
+      addMessageToState(targetChatId, formattedMsg);
+      
+      if (msg.senderId === activeChatId) setWhoIsTyping(null);
+    };
+
+    // Typing Indicators
+    const handleDisplayTyping = ({ senderId }: any) => {
+       if (senderId === activeChatId) setWhoIsTyping(senderId);
+    };
+    const handleHideTyping = ({ senderId }: any) => {
+       if (senderId === activeChatId) setWhoIsTyping(null);
+    };
+
+    // Call Specifics (Joining/Ending)
+    const handleCallAccepted = async ({ roomId }: any) => {
+        // Since global provider also listens, we just ensure we join the room here
+        // if we are the one who initiated it.
+        await joinLiveKitRoom(roomId);
+    };
+    const handleCallEnded = () => {
+        setIsInCall(false);
+        setCallToken("");
+        setCurrentLogId(""); 
+    };
+    const handleCallSuccess = ({ logId }: any) => {
+        setCurrentLogId(logId); 
+    };
+
+    socket.on("receive_message", handleReceiveMessage);
+    socket.on("display_typing", handleDisplayTyping);
+    socket.on("hide_typing", handleHideTyping);
+    socket.on("call_accepted", handleCallAccepted);
+    socket.on("call_ended", handleCallEnded);
+    socket.on("call_sent_success", handleCallSuccess);
+
+    return () => { 
+        socket.off("receive_message", handleReceiveMessage);
+        socket.off("display_typing", handleDisplayTyping);
+        socket.off("hide_typing", handleHideTyping);
+        socket.off("call_accepted", handleCallAccepted);
+        socket.off("call_ended", handleCallEnded);
+        socket.off("call_sent_success", handleCallSuccess);
+    };
+  }, [socket, user, activeChatId]);
+
+
+  // --- HELPERS ---
   const joinLiveKitRoom = async (roomId: string) => {
       try {
           const resp = await fetch(`/api/livekit/token?room=${roomId}&username=${user?.fullName}`);
@@ -240,7 +248,6 @@ export default function ChatPage() {
               setCallToken(data.token);
               setCurrentRoomId(roomId);
               setIsInCall(true);
-              setIncomingCall(null);
           }
       } catch (e) { console.error("Failed to get token:", e); }
   };
@@ -250,7 +257,6 @@ export default function ChatPage() {
     const roomId = getDirectRoomId(user.id, activeChatId);
     setStartWithVideo(isVideo);
 
-    // We don't have logId yet, server will create it and send 'call_sent_success'
     socket.emit("outgoing_call", {
         callerId: user.id,
         calleeId: activeChatId,
@@ -262,56 +268,19 @@ export default function ChatPage() {
     await joinLiveKitRoom(roomId);
   };
 
-  const answerCall = async () => {
-    if(!incomingCall || !user || !socket) return;
-    stopRingtone();
-    const roomId = incomingCall.roomId;
-    setStartWithVideo(incomingCall.isVideo);
-    
-    // 👇 Store the logId so we can end the call correctly later
-    setCurrentLogId(incomingCall.logId);
-
-    // 👇 UPDATED: Send logId back to server
-    socket.emit("call_accepted_signal", {
-        callerId: incomingCall.callerId,
-        roomId,
-        logId: incomingCall.logId // Crucial for status update
-    });
-
-    await joinLiveKitRoom(roomId);
-  };
-
-  const declineCall = () => {
-      if(!incomingCall || !socket) return;
-      stopRingtone();
-
-      // 👇 UPDATED: Send reject signal with logId
-      socket.emit("reject_call", {
-          callerId: incomingCall.callerId,
-          logId: incomingCall.logId // Crucial for status update
-      });
-
-      setIncomingCall(null);
-  };
-
   const handleLocalDisconnect = () => {
       if (socket) {
           let partnerId = activeChatId;
-          if (incomingCall && incomingCall.callerId) partnerId = incomingCall.callerId;
-
-          // 👇 UPDATED: Send logId to save End Time
           socket.emit("end_call", { 
               to: partnerId,
-              logId: currentLogId // Crucial for duration calculation
+              logId: currentLogId 
           });
       }
-      stopRingtone();
       setIsInCall(false);
       setCallToken("");
       setCurrentLogId("");
   };
 
-  // --- CHAT ACTIONS ---
   const handleChatAction = async (action: "pin" | "mute" | "delete") => {
     if (!activeChatId) return;
     try {
@@ -412,7 +381,13 @@ export default function ChatPage() {
     }
   };
 
-  const filteredContacts = contacts
+  // 👇 REAL-TIME STATUS LOGIC: Merge Socket Data with Contacts
+  const contactsWithStatus = contacts.map(c => ({
+      ...c,
+      status: onlineUsers.includes(c.id) ? "Online" : "Offline"
+  }));
+
+  const filteredContacts = contactsWithStatus
     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
       const isAPinned = pinnedIds.includes(a.id);
@@ -420,7 +395,7 @@ export default function ChatPage() {
       return (isAPinned === isBPinned) ? 0 : isAPinned ? -1 : 1;
     });
 
-  const activeContact = contacts.find(c => c.id === activeChatId) || { id: "", name: "Select a Chat", avatar: "", color: "", status: "", lastSeen: "" };
+  const activeContact = contactsWithStatus.find(c => c.id === activeChatId) || { id: "", name: "Select a Chat", avatar: "", color: "", status: "", lastSeen: "" };
   const activeMessages = conversations[activeChatId] || [];
   const myRealId = user?.id;
   const isPinned = pinnedIds.includes(activeChatId);
@@ -428,8 +403,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/40 backdrop-blur-xl shadow-2xl relative">
-      <audio ref={ringtoneRef} src={RINGTONE_URL} loop />
-
+      
       {/* --- SIDEBAR --- */}
       <div className={cn("w-full md:w-80 h-full border-r border-white/10 flex flex-col bg-black/20", activeChatId ? "hidden md:flex" : "flex")}>
         <div className="p-4 border-b border-white/10 relative">
@@ -447,6 +421,7 @@ export default function ChatPage() {
              <div key={contact.id} onClick={() => setActiveChatId(contact.id)} className={cn("p-4 flex gap-3 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 relative", activeChatId === contact.id ? "bg-white/10 border-l-2 border-l-indigo-500" : "border-l-2 border-l-transparent")}>
                 <div className="relative">
                    <img src={contact.avatar} alt={contact.name} className={cn("w-12 h-12 rounded-full object-cover bg-gradient-to-tr", contact.color)} />
+                   {/* REAL-TIME BADGE */}
                    {contact.status === "Online" && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#1a1a1a]" />}
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -544,23 +519,6 @@ export default function ChatPage() {
           </div>
         )}
       </div>
-
-       {/* --- INCOMING CALL POPUP --- */}
-       {incomingCall && !isInCall && (
-         <div className="fixed bottom-4 right-4 z-50 bg-[#1a1a1a] p-4 rounded-2xl shadow-2xl border border-green-500/30 flex flex-col items-center gap-3 w-72 animate-in slide-in-from-bottom-10">
-             <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center animate-bounce">
-                <PhoneIncoming className="w-6 h-6 text-green-500" />
-             </div>
-             <div className="text-center">
-                 <h3 className="text-lg font-bold text-white">{incomingCall.callerName}</h3>
-                 <p className="text-white/50 text-xs">Incoming {incomingCall.isVideo ? "Video" : "Voice"} Call...</p>
-             </div>
-             <div className="flex gap-2 w-full">
-                 <button onClick={declineCall} className="flex-1 py-2 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition text-sm">Decline</button>
-                 <button onClick={answerCall} className="flex-1 py-2 bg-green-500 text-black font-bold rounded-xl hover:bg-green-400 transition text-sm">Answer</button>
-             </div>
-         </div>
-       )}
 
        {/* --- LIVEKIT CALL OVERLAY --- */}
        {isInCall && callToken && (

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs"; // <--- Added Import
+import { ClerkProvider } from "@clerk/nextjs";
 import { AuthSync } from "@/components/auth-sync";
-import { dark } from '@clerk/themes'
+import { dark } from '@clerk/themes';
 import "./globals.css";
-// Import the new component
 import { StarBackground } from "@/components/ui/StarBackground";
-
-// ✅ CORRECT (New Standard)
 import "@livekit/components-styles";
+
+// 👇 1. Import the SocketProvider
+import { SocketProvider } from "@/providers/SocketProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,27 +23,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // <--- Wrapped everything in ClerkProvider
     <ClerkProvider
-    appearance={{
+      appearance={{
         baseTheme: dark,
         variables: { 
-          colorPrimary: '#6366f1', // Optional: Matches your Indigo-500 brand color
-          colorBackground: '#040404' // Optional: Matches gray-900 if you want it darker
+          colorPrimary: '#6366f1', 
+          colorBackground: '#040404' 
         }
       }}
     >
       <html lang="en" className="scroll-smooth">
-        {/* Ensure base text color is white */}
         <body className={`${inter.className} antialiased text-white`}>
           <AuthSync />
-          {/* Mount the animated background here */}
           <StarBackground />
           
-          {/* Your app content sits on top */}
-          <div className="relative z-10">
-             {children}
-          </div>
+          {/* 👇 2. Wrap the content with SocketProvider */}
+          <SocketProvider>
+            <div className="relative z-10">
+               {children}
+            </div>
+          </SocketProvider>
+
         </body>
       </html>
     </ClerkProvider>
