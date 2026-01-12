@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { io, Socket } from 'socket.io-client';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import { Phone, PhoneIncoming, Video, PhoneOff, MessageSquare, X } from 'lucide-react';
+import { Phone, PhoneIncoming, Video, PhoneOff, MessageSquare, X, Bell } from 'lucide-react';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -29,13 +29,18 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   // Call State
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  
+  // 👇 NEW: Reference for the Message Notification Sound
+  const notificationSoundRef = useRef<HTMLAudioElement | null>(null);
+  
   const router = useRouter();
 
-  // Message Notification State
+  // Updated Message Notification State to support 'types' (alert vs message)
   const [msgNotification, setMsgNotification] = useState<{
       senderName: string;
       content: string;
-      senderId: string;
+      senderId?: string;
+      type: 'message' | 'alert'; // 👈 Added type
   } | null>(null);
 
   useEffect(() => {
@@ -43,6 +48,9 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     const newSocket = io("http://localhost:3000", { transports: ["websocket"] });
     
+    // 👇 Initialize Notification Sound
+    notificationSoundRef.current = new Audio("/sounds/water_drops.mp3");
+
     newSocket.on("connect", () => {
       console.log("✅ Global Socket Connected");
       setIsConnected(true);
@@ -66,10 +74,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     // --- CALL LISTENERS ---
     newSocket.on("incoming_call", (data) => {
-        // Only set incoming call if we are not already dealing with one
         setIncomingCall(data);
-        
-        // Play Ringtone
         const audio = new Audio("/sounds/time_rebel.mp3");
         audio.loop = true;
         audio.play().catch(e => console.error("Audio error", e));
@@ -84,22 +89,39 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
     });
 
-    // --- MESSAGE LISTENER (Updated for Files) ---
+    // 👇 NEW: Handle 'Call Rejected' Event Globally
+    newSocket.on("call_rejected", () => {
+        setMsgNotification({
+            senderName: "Call Declined",
+            content: "User is busy or declined the call.",
+            type: "alert"
+        });
+        setTimeout(() => setMsgNotification(null), 4000);
+    });
+
+    // --- MESSAGE LISTENER ---
     newSocket.on("receive_message", (msg: any) => {
-        // Determine notification text based on message type
+        // 1. Play Notification Sound
+        if (notificationSoundRef.current) {
+            notificationSoundRef.current.currentTime = 0;
+            notificationSoundRef.current.play().catch(e => console.warn("Sound blocked:", e));
+        }
+
+        // 2. Determine Content Text
         let contentText = msg.text || "New Message";
         if (msg.type === "image") contentText = "📷 Sent an image";
         if (msg.type === "voice") contentText = "🎤 Sent a voice note";
         if (msg.type === "sticker") contentText = "👻 Sent a sticker";
         if (msg.type === "file") contentText = "📎 Sent a file";
 
+        // 3. Show Toast
         setMsgNotification({
             senderName: msg.senderName || "New Message", 
             content: contentText,
-            senderId: msg.senderId
+            senderId: msg.senderId,
+            type: "message"
         });
 
-        // Auto-hide after 3 seconds
         setTimeout(() => {
             setMsgNotification(null);
         }, 3000);
@@ -146,20 +168,30 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     <SocketContext.Provider value={{ socket, isConnected, onlineUsers }}>
       {children}
 
-      {/* GLOBAL MESSAGE TOAST */}
+      {/* GLOBAL NOTIFICATION TOAST (Messages & Alerts) */}
       {msgNotification && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] animate-in slide-in-from-top-5 fade-in duration-300">
               <div 
                 className="bg-[#1a1a1a]/90 backdrop-blur-md border border-white/10 px-4 py-3 rounded-full shadow-2xl flex items-center gap-3 min-w-[300px] max-w-md cursor-pointer hover:bg-white/5 transition"
-                onClick={() => router.push('/dashboard/chat')}
+                onClick={() => {
+                    // Only redirect if it's a message, not a system alert
+                    if (msgNotification.type === 'message') router.push('/dashboard/chat');
+                }}
               >
-                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                      <MessageSquare className="w-4 h-4 text-green-500" />
+                  {/* Icon changes color based on type */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msgNotification.type === 'alert' ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                      {msgNotification.type === 'alert' ? (
+                          <Bell className="w-4 h-4 text-red-500" />
+                      ) : (
+                          <MessageSquare className="w-4 h-4 text-green-500" />
+                      )}
                   </div>
+                  
                   <div className="flex-1 min-w-0">
                       <h4 className="text-white text-sm font-bold truncate">{msgNotification.senderName}</h4>
                       <p className="text-white/60 text-xs truncate">{msgNotification.content}</p>
                   </div>
+                  
                   <button 
                     onClick={(e) => { e.stopPropagation(); closeNotification(); }} 
                     className="p-1 hover:bg-white/10 rounded-full text-white/40 hover:text-white"

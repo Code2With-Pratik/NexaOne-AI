@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, MoreVertical, Send, Paperclip, Mic, Smile, CheckCheck,
-  Trash2, BellOff, Bell, Pin, PinOff, X, StopCircle, Sticker, ArrowLeft, FileText, Download
+  Trash2, BellOff, Bell, Pin, PinOff, X, StopCircle, Sticker, ArrowLeft, FileText, Download, AudioLines
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import EmojiPicker from "emoji-picker-react";
@@ -138,7 +138,7 @@ export default function ChatPage() {
           id: msg.id, text: msg.content, senderId: msg.senderId, receiverId: msg.receiverId,
           time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           date: formatDateLabel(msg.createdAt), type: msg.type as MessageType, status: "read",
-          fileName: msg.fileName // Ensure file name is mapped
+          fileName: msg.fileName
         }));
         setConversations(prev => ({ ...prev, [activeChatId]: formattedMessages }));
         
@@ -185,11 +185,10 @@ export default function ChatPage() {
         }
     };
 
-    // Call Handlers
     const handleCallAccepted = async ({ roomId }: any) => { await joinLiveKitRoom(roomId); };
     const handleCallEnded = () => { setIsInCall(false); setCallToken(""); setCurrentLogId(""); };
     const handleCallSuccess = ({ logId }: any) => { setCurrentLogId(logId); };
-    const handleCallRejected = () => { setIsInCall(false); setCallToken(""); setCurrentLogId(""); alert("Call Declined"); };
+    const handleCallRejected = () => { setIsInCall(false); setCallToken(""); setCurrentLogId(""); };
 
     socket.on("receive_message", handleReceiveMessage);
     socket.on("messages_read_update", handleReadUpdate);
@@ -207,7 +206,6 @@ export default function ChatPage() {
         socket.off("call_ended", handleCallEnded);
         socket.off("call_sent_success", handleCallSuccess);
         socket.off("call_rejected", handleCallRejected);
-        // ... remove typing
     };
   }, [socket, user, activeChatId]);
 
@@ -237,11 +235,9 @@ export default function ChatPage() {
   const handleChatAction = async (action: "pin" | "mute" | "delete") => {
     if (!activeChatId) return;
     try {
-      // Optimistic Updates
       if (action === "pin") setPinnedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
       if (action === "mute") setMutedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
       if (action === "delete") { setConversations(prev => ({ ...prev, [activeChatId]: [] })); setActiveChatId(""); }
-      
       await axios.post("/api/chat/actions", { action, targetId: activeChatId });
       setShowChatMenu(false);
     } catch (error) { console.error("Action failed", error); }
@@ -265,7 +261,7 @@ export default function ChatPage() {
     setIsTyping(false);
   };
 
-  // 👇 CORRECTED VOICE RECORDING LOGIC
+  // --- RECORDING LOGIC ---
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -278,7 +274,7 @@ export default function ChatPage() {
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Use webm for browser compatibility
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); 
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
@@ -295,11 +291,22 @@ export default function ChatPage() {
     }
   };
 
+  // 👇 NEW: Cancel Recording (Discard)
+  const cancelRecording = () => {
+      if (mediaRecorderRef.current && isRecording) {
+          mediaRecorderRef.current.onstop = null; // Prevent sending
+          mediaRecorderRef.current.stop();
+          setIsRecording(false);
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+  };
+
+  // 👇 NEW: Finish Recording (Send)
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop()); // Stop stream
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
 
@@ -331,7 +338,6 @@ export default function ChatPage() {
     typingTimeoutRef.current = setTimeout(() => { setIsTyping(false); socket.emit("stop_typing", { senderId: user?.id, receiverId: activeChatId }); }, 2000);
   };
 
-  // Sidebar Logic
   const contactsWithStatus = contacts.map(c => ({
       ...c,
       status: onlineUsers.includes(c.id) ? "Online" : "Offline",
@@ -422,7 +428,7 @@ export default function ChatPage() {
                   <React.Fragment key={m.id}>
                     {(i === 0 || activeMessages[i-1].date !== m.date) && <div className="flex justify-center my-6"><span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">{m.date}</span></div>}
                     <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                      <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-900 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
+                      <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
                         {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
                         {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
                         {m.type === 'voice' && <audio controls src={m.text} className="h-8 w-48 md:w-60 accent-indigo-500" />}
@@ -444,7 +450,7 @@ export default function ChatPage() {
                         {/* READ RECEIPT */}
                         <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
                             <span className="text-[10px] font-medium">{m.time}</span>
-                            {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-gray-200" : "text-white/50")} />}
+                            {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
                         </div>
                       </div>
                     </div>
@@ -457,15 +463,45 @@ export default function ChatPage() {
                {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
                {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1a] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner focus-within:border-indigo-500/50 focus-within:bg-white/10 transition-all">
-                  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400"><Smile className="w-6 h-6" /></button>
-                  <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400"><Sticker className="w-5 h-5" /></button>
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400"><Paperclip className="w-5 h-5" /></button>
                   
-                  {/* ALLOW ALL FILE TYPES */}
-                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
-                  
-                  <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder={isRecording ? "Listening..." : "Message..."} value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} disabled={isRecording} />
-                  {inputText.trim() ? <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white"><Send className="w-4 h-4" /></button> : <button onClick={isRecording ? stopRecording : startRecording} className={cn("p-2 rounded-full", isRecording ? "bg-red-500 text-white animate-pulse" : "text-white/50 hover:text-red-400")}>{isRecording ? <StopCircle className="w-6 h-6" /> : <Mic className="w-5 h-5" />}</button>}
+                  {/* 👇 NEW: CONDITIONAL RENDER FOR RECORDING UI */}
+                  {isRecording ? (
+                      <div className="flex items-center gap-4 w-full bg-[#2a2a2a] p-1.5 rounded-2xl animate-in fade-in slide-in-from-bottom-2 border border-red-500/30">
+                         <div className="flex items-center gap-2 px-3 animate-pulse text-red-500">
+                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                            <span className="text-xs font-mono font-bold tracking-wider">REC</span>
+                         </div>
+                         
+                         {/* Fake Waveform Animation */}
+                         <div className="flex-1 flex items-center gap-1 h-6 opacity-60">
+                            {[...Array(15)].map((_, i) => (
+                                <div key={i} className="w-1 bg-red-500 rounded-full animate-pulse" style={{ height: `${Math.max(20, Math.random() * 100)}%`, animationDelay: `${i * 0.05}s` }}></div>
+                            ))}
+                         </div>
+
+                         <div className="flex gap-2">
+                             <button onClick={cancelRecording} className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition"><Trash2 className="w-5 h-5" /></button>
+                             <button onClick={stopRecording} className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white shadow-lg shadow-red-600/20 transition"><Send className="w-4 h-4" /></button>
+                         </div>
+                      </div>
+                  ) : (
+                      /* NORMAL INPUT UI */
+                      <>
+                          <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400"><Smile className="w-6 h-6" /></button>
+                          <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400"><Sticker className="w-5 h-5" /></button>
+                          <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400"><Paperclip className="w-5 h-5" /></button>
+                          
+                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
+                          
+                          <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
+                          
+                          {inputText.trim() ? (
+                              <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white"><Send className="w-4 h-4" /></button>
+                          ) : (
+                              <button onClick={startRecording} className="p-2 rounded-full text-white/50 hover:text-red-400 hover:bg-white/5 transition"><Mic className="w-5 h-5" /></button>
+                          )}
+                      </>
+                  )}
                </div>
             </div>
           </>
