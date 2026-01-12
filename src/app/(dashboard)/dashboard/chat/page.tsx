@@ -422,7 +422,7 @@ export default function ChatPage() {
                   <React.Fragment key={m.id}>
                     {(i === 0 || activeMessages[i-1].date !== m.date) && <div className="flex justify-center my-6"><span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">{m.date}</span></div>}
                     <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                      <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
+                      <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-900 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
                         {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
                         {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
                         {m.type === 'voice' && <audio controls src={m.text} className="h-8 w-48 md:w-60 accent-indigo-500" />}
@@ -444,7 +444,7 @@ export default function ChatPage() {
                         {/* READ RECEIPT */}
                         <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
                             <span className="text-[10px] font-medium">{m.time}</span>
-                            {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-300" : "text-white/50")} />}
+                            {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-gray-200" : "text-white/50")} />}
                         </div>
                       </div>
                     </div>
