@@ -36,31 +36,23 @@ type Contact = {
 
 // --- CONFIG ---
 const STICKERS = ["👻", "🤖", "👽", "🦄", "🔥", "💯", "🎉", "❤️", "🚀", "🍕"];
-// 🎵 Ensure this file exists in your public/sounds folder
 const RINGTONE_URL = "/sounds/time_rebel.mp3"; 
 
-// --- 📅 HELPER: SMART DATE FORMATTER ---
+// --- DATE HELPER ---
 const formatDateLabel = (dateString: string) => {
   const date = new Date(dateString);
   const now = new Date();
-
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  if (msgDate.getTime() === today.getTime()) {
-    return "Today";
-  } else if (msgDate.getTime() === yesterday.getTime()) {
-    return "Yesterday";
-  } else if (now.getTime() - msgDate.getTime() < 7 * 24 * 60 * 60 * 1000) {
-    return date.toLocaleDateString([], { weekday: 'long' });
-  } else {
-    return date.toLocaleDateString();
-  }
+  if (msgDate.getTime() === today.getTime()) return "Today";
+  if (msgDate.getTime() === yesterday.getTime()) return "Yesterday";
+  if (now.getTime() - msgDate.getTime() < 7 * 24 * 60 * 60 * 1000) return date.toLocaleDateString([], { weekday: 'long' });
+  return date.toLocaleDateString();
 };
 
-// --- 📞 HELPER: ROOM ID GENERATOR ---
 const getDirectRoomId = (id1: string, id2: string) => {
     return [id1, id2].sort().join('-');
 };
@@ -69,36 +61,35 @@ export default function ChatPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
 
-  // --- STATE: CHAT ---
+  // --- STATE ---
   const [socket, setSocket] = useState<any>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [conversations, setConversations] = useState<Record<string, Message[]>>({});
   const [activeChatId, setActiveChatId] = useState<string>("");
 
-  // Search & Preferences
   const [searchQuery, setSearchQuery] = useState("");
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [mutedIds, setMutedIds] = useState<string[]>([]);
 
-  // Input State
   const [inputText, setInputText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-
-  // Typing State
   const [isTyping, setIsTyping] = useState(false);
   const [whoIsTyping, setWhoIsTyping] = useState<string | null>(null);
 
-  // UI Toggles
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showChatMenu, setShowChatMenu] = useState(false);
 
-  // --- STATE: CALLING ---
-  const [incomingCall, setIncomingCall] = useState<{ callerId: string, callerName: string, isVideo: boolean, roomId: string } | null>(null);
+  // --- CALLING STATE ---
+  // 👇 UPDATED: Added logId to type
+  const [incomingCall, setIncomingCall] = useState<{ callerId: string, callerName: string, isVideo: boolean, roomId: string, logId: string } | null>(null);
   const [isInCall, setIsInCall] = useState(false);
   const [callToken, setCallToken] = useState("");
   const [currentRoomId, setCurrentRoomId] = useState("");
   const [startWithVideo, setStartWithVideo] = useState(false);
+  
+  // 👇 NEW: Track the current Log ID during a call (for both caller and receiver)
+  const [currentLogId, setCurrentLogId] = useState<string>("");
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -106,11 +97,9 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // 👇 FIXED: Declared ringtoneRef here
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- 1. INITIALIZE SOCKET & LISTENERS ---
+  // --- 1. INITIALIZE SOCKET ---
   useEffect(() => {
     if (!isLoaded || !user) return;
 
@@ -118,11 +107,10 @@ export default function ChatPage() {
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
-      console.log("Socket connected as:", user.id);
       newSocket.emit("join", user.id);
     });
 
-    // --- CHAT LISTENERS ---
+    // Chat Listeners
     newSocket.on("receive_message", (msg: any) => {
       const formattedMsg: Message = {
         id: msg.id || Date.now().toString(),
@@ -134,56 +122,55 @@ export default function ChatPage() {
         type: msg.type || "text",
         status: "read"
       };
-
       const targetChatId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
       addMessageToState(targetChatId, formattedMsg);
-
-      if (msg.senderId === activeChatId) {
-        setWhoIsTyping(null);
-      }
+      if (msg.senderId === activeChatId) setWhoIsTyping(null);
     });
 
     newSocket.on("user_status_update", ({ userId, status }: any) => {
       setContacts(prev => prev.map(c => c.id === userId ? { ...c, status } : c));
     });
-
     newSocket.on("current_online_list", (onlineIds: string[]) => {
       setContacts(prev => prev.map(c => onlineIds.includes(c.id) ? { ...c, status: "Online" } : { ...c, status: "Offline" }));
     });
-
     newSocket.on("display_typing", ({ senderId }: any) => {
        if (senderId === activeChatId) setWhoIsTyping(senderId);
     });
-
     newSocket.on("hide_typing", ({ senderId }: any) => {
        if (senderId === activeChatId) setWhoIsTyping(null);
     });
 
-    // --- CALL LISTENERS ---
-    // Listener for incoming call notification
+    // --- CALL LISTENERS (UPDATED) ---
+
+    // 1. Incoming Call: Capture logId
     newSocket.on("incoming_call", (data: any) => {
         if (!isInCall) {
-            setIncomingCall(data);
-            // 👇 FIXED: Play sound safely
-            if (ringtoneRef.current) {
-                ringtoneRef.current.play()
-                    .catch(e => console.warn("Ringtone failed (check public folder):", e));
-            }
+            console.log("Incoming call data:", data);
+            setIncomingCall(data); // data includes logId
+            if (ringtoneRef.current) ringtoneRef.current.play().catch(e => console.warn(e));
         }
     });
 
-    // Listener for when the callee accepts the call
+    // 2. Call Accepted: Stop ringtone & join
     newSocket.on("call_accepted", async ({ roomId }: any) => {
         stopRingtone();
         await joinLiveKitRoom(roomId);
     });
 
-    // Listener for when the other party ends the call
+    // 3. Call Ended: Cleanup
     newSocket.on("call_ended", () => {
         stopRingtone();
         setIsInCall(false);
         setCallToken("");
         setIncomingCall(null);
+        setCurrentLogId(""); // Clear log ID
+    });
+
+    // 4. 👇 NEW: Call Sent Success (For Caller)
+    // The server sends this back immediately after we make a call so we know the log ID
+    newSocket.on("call_sent_success", ({ logId }: any) => {
+        console.log("Call log created:", logId);
+        setCurrentLogId(logId); 
     });
 
     return () => { 
@@ -192,7 +179,7 @@ export default function ChatPage() {
     };
   }, [isLoaded, user, activeChatId, isInCall]);
 
-  // --- 2. FETCH DATA ON LOAD ---
+  // --- FETCH DATA ---
   useEffect(() => {
     async function loadData() {
       try {
@@ -208,24 +195,18 @@ export default function ChatPage() {
               setMutedIds(prefData.mutedChatIds || []);
             }
         }
-      } catch (err) {
-        console.error("Failed to load data", err);
-      }
+      } catch (err) { console.error(err); }
     }
     loadData();
   }, []);
 
-  // --- 3. FETCH HISTORY ---
   useEffect(() => {
     if (!activeChatId || !user) return;
-
     const fetchHistory = async () => {
       try {
         const res = await fetch(`/api/chat/history?partnerId=${activeChatId}`);
         const data = await res.json();
-
         if (!Array.isArray(data)) return;
-
         const formattedMessages = data.map((msg: any) => ({
           id: msg.id,
           text: msg.content,
@@ -236,20 +217,13 @@ export default function ChatPage() {
           type: msg.type as any,
           status: "read"
         }));
-
-        setConversations(prev => ({
-          ...prev,
-          [activeChatId]: formattedMessages
-        }));
-      } catch (err) {
-        console.error("Failed to load history", err);
-      }
+        setConversations(prev => ({ ...prev, [activeChatId]: formattedMessages }));
+      } catch (err) { console.error(err); }
     };
-
     fetchHistory();
   }, [activeChatId, user]);
 
-  // --- 4. CALL FUNCTIONS ---
+  // --- CALL FUNCTIONS ---
 
   const stopRingtone = () => {
       if (ringtoneRef.current) {
@@ -268,9 +242,7 @@ export default function ChatPage() {
               setIsInCall(true);
               setIncomingCall(null);
           }
-      } catch (e) {
-          console.error("Failed to get token:", e);
-      }
+      } catch (e) { console.error("Failed to get token:", e); }
   };
 
   const initiateCall = async (isVideo: boolean) => {
@@ -278,6 +250,7 @@ export default function ChatPage() {
     const roomId = getDirectRoomId(user.id, activeChatId);
     setStartWithVideo(isVideo);
 
+    // We don't have logId yet, server will create it and send 'call_sent_success'
     socket.emit("outgoing_call", {
         callerId: user.id,
         calleeId: activeChatId,
@@ -294,17 +267,30 @@ export default function ChatPage() {
     stopRingtone();
     const roomId = incomingCall.roomId;
     setStartWithVideo(incomingCall.isVideo);
+    
+    // 👇 Store the logId so we can end the call correctly later
+    setCurrentLogId(incomingCall.logId);
 
+    // 👇 UPDATED: Send logId back to server
     socket.emit("call_accepted_signal", {
         callerId: incomingCall.callerId,
-        roomId
+        roomId,
+        logId: incomingCall.logId // Crucial for status update
     });
 
     await joinLiveKitRoom(roomId);
   };
 
   const declineCall = () => {
+      if(!incomingCall || !socket) return;
       stopRingtone();
+
+      // 👇 UPDATED: Send reject signal with logId
+      socket.emit("reject_call", {
+          callerId: incomingCall.callerId,
+          logId: incomingCall.logId // Crucial for status update
+      });
+
       setIncomingCall(null);
   };
 
@@ -313,38 +299,33 @@ export default function ChatPage() {
           let partnerId = activeChatId;
           if (incomingCall && incomingCall.callerId) partnerId = incomingCall.callerId;
 
-          if (partnerId) {
-             socket.emit("end_call", { to: partnerId });
-          }
+          // 👇 UPDATED: Send logId to save End Time
+          socket.emit("end_call", { 
+              to: partnerId,
+              logId: currentLogId // Crucial for duration calculation
+          });
       }
       stopRingtone();
       setIsInCall(false);
       setCallToken("");
+      setCurrentLogId("");
   };
 
-  // --- 5. CHAT ACTIONS ---
+  // --- CHAT ACTIONS ---
   const handleChatAction = async (action: "pin" | "mute" | "delete") => {
     if (!activeChatId) return;
-
     try {
-      if (action === "pin") {
-        setPinnedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
-      }
-      if (action === "mute") {
-        setMutedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
-      }
+      if (action === "pin") setPinnedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
+      if (action === "mute") setMutedIds(prev => prev.includes(activeChatId) ? prev.filter(id => id !== activeChatId) : [...prev, activeChatId]);
       if (action === "delete") {
         setConversations(prev => ({ ...prev, [activeChatId]: [] }));
         setActiveChatId("");
       }
       await axios.post("/api/chat/actions", { action, targetId: activeChatId });
       setShowChatMenu(false);
-    } catch (error) {
-      console.error("Action failed", error);
-    }
+    } catch (error) { console.error("Action failed", error); }
   };
 
-  // --- HELPERS ---
   const addMessageToState = (chatId: string, msg: Message) => {
     setConversations(prev => ({
       ...prev,
@@ -353,20 +334,16 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [conversations, activeChatId, whoIsTyping]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
     if (!socket || !activeChatId) return;
-
     if (!isTyping) {
       setIsTyping(true);
       socket.emit("typing", { senderId: user?.id, receiverId: activeChatId });
     }
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
@@ -376,7 +353,6 @@ export default function ChatPage() {
 
   const sendMessagePayload = (content: string, type: "text" | "image" | "voice" | "sticker") => {
     if (!socket || !user) return;
-
     const now = new Date();
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -388,10 +364,8 @@ export default function ChatPage() {
       type: type,
       status: "sent"
     };
-
     addMessageToState(activeChatId, newMessage);
     socket.emit("send_message", newMessage);
-
     socket.emit("stop_typing", { senderId: user.id, receiverId: activeChatId });
     setIsTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -438,7 +412,6 @@ export default function ChatPage() {
     }
   };
 
-  // --- RENDER PREP ---
   const filteredContacts = contacts
     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
@@ -455,8 +428,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/40 backdrop-blur-xl shadow-2xl relative">
-      
-      {/* 👇 FIXED: Audio element to play the ringtone */}
       <audio ref={ringtoneRef} src={RINGTONE_URL} loop />
 
       {/* --- SIDEBAR --- */}
@@ -471,16 +442,11 @@ export default function ChatPage() {
             className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
           />
         </div>
-
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {filteredContacts.map((contact) => (
              <div key={contact.id} onClick={() => setActiveChatId(contact.id)} className={cn("p-4 flex gap-3 cursor-pointer hover:bg-white/5 transition-colors border-b border-white/5 relative", activeChatId === contact.id ? "bg-white/10 border-l-2 border-l-indigo-500" : "border-l-2 border-l-transparent")}>
                 <div className="relative">
-                   <img 
-                     src={contact.avatar} 
-                     alt={contact.name} 
-                     className={cn("w-12 h-12 rounded-full object-cover bg-gradient-to-tr", contact.color)} 
-                   />
+                   <img src={contact.avatar} alt={contact.name} className={cn("w-12 h-12 rounded-full object-cover bg-gradient-to-tr", contact.color)} />
                    {contact.status === "Online" && <div className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#1a1a1a]" />}
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
@@ -501,85 +467,51 @@ export default function ChatPage() {
 
       {/* --- CHAT AREA --- */}
       <div className={cn("flex-1 flex flex-col bg-transparent h-full relative", !activeChatId ? "hidden md:flex" : "flex")}>
-
         {activeChatId ? (
           <>
             {/* HEADER */}
             <div className="h-16 px-4 md:px-6 border-b border-white/10 flex items-center justify-between bg-black/20 z-20">
               <div className="flex items-center gap-3">
                  <button onClick={() => setActiveChatId("")} className="md:hidden text-white/60 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
-                 <img 
-                   src={activeContact.avatar} 
-                   alt={activeContact.name}
-                   className={cn("w-10 h-10 rounded-full object-cover bg-gradient-to-tr", activeContact.color)}
-                 />
+                 <img src={activeContact.avatar} alt={activeContact.name} className={cn("w-10 h-10 rounded-full object-cover bg-gradient-to-tr", activeContact.color)} />
                  <div>
                    <h3 className="font-bold text-white text-base">{activeContact.name}</h3>
                    <p className={cn("text-xs flex items-center gap-1.5", activeContact.status === "Online" ? "text-green-400" : "text-white/40")}>
-                     {whoIsTyping === activeChatId ? (
-                        <span className="text-indigo-400 font-bold animate-pulse">Typing...</span>
-                     ) : (
-                        <>
-                          <span className={cn("w-1.5 h-1.5 rounded-full", activeContact.status === "Online" ? "bg-green-400 animate-pulse" : "bg-gray-400")} />
-                          {activeContact.status}
-                        </>
-                     )}
+                     {whoIsTyping === activeChatId ? <span className="text-indigo-400 font-bold animate-pulse">Typing...</span> : <>{activeContact.status}</>}
                    </p>
                  </div>
               </div>
-
               <div className="flex items-center gap-1 text-white/60">
-                 <button onClick={() => initiateCall(false)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full transition-colors"><Phone className="w-5 h-5" /></button>
-                 <button onClick={() => initiateCall(true)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full transition-colors"><Video className="w-5 h-5" /></button>
-
+                 <button onClick={() => initiateCall(false)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><Phone className="w-5 h-5" /></button>
+                 <button onClick={() => initiateCall(true)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><Video className="w-5 h-5" /></button>
                  <div className="relative">
-                   <button onClick={() => setShowChatMenu(!showChatMenu)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full transition-colors"><MoreVertical className="w-5 h-5" /></button>
+                   <button onClick={() => setShowChatMenu(!showChatMenu)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><MoreVertical className="w-5 h-5" /></button>
                    {showChatMenu && (
-                     <div className="absolute top-10 right-0 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 p-1 animate-in zoom-in-95">
-                       <button onClick={() => handleChatAction("mute")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">
-                         {isMuted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-                         {isMuted ? "Unmute Notifications" : "Mute Notifications"}
-                       </button>
-                       <button onClick={() => handleChatAction("pin")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">
-                         {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                         {isPinned ? "Unpin Chat" : "Pin Chat"}
-                       </button>
-                       <button onClick={() => handleChatAction("delete")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg">
-                         <Trash2 className="w-4 h-4" /> Delete Chat
-                       </button>
+                     <div className="absolute top-10 right-0 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 p-1">
+                       <button onClick={() => handleChatAction("mute")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">{isMuted ? "Unmute" : "Mute"}</button>
+                       <button onClick={() => handleChatAction("pin")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">{isPinned ? "Unpin" : "Pin"}</button>
+                       <button onClick={() => handleChatAction("delete")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg">Delete</button>
                      </div>
                    )}
                  </div>
               </div>
             </div>
 
-            {/* MESSAGES LIST */}
+            {/* MESSAGES */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
               {activeMessages.map((m, i) => {
                 const isMe = m.senderId === myRealId;
                 const showDate = i === 0 || activeMessages[i-1].date !== m.date;
-
                 return (
                   <React.Fragment key={m.id}>
-                    {showDate && (
-                      <div className="flex justify-center my-6">
-                        <span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">
-                          {m.date}
-                        </span>
-                      </div>
-                    )}
-
+                    {showDate && <div className="flex justify-center my-6"><span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">{m.date}</span></div>}
                     <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
                       <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md transition-all", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
-                        {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover cursor-pointer hover:opacity-90" />}
-                        {m.type === 'sticker' && <span className="text-5xl block p-2 hover:scale-110 transition-transform cursor-pointer">{m.text}</span>}
+                        {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
+                        {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
                         {m.type === 'voice' && <audio controls src={m.text} className="h-8 w-48 md:w-60 accent-indigo-500" />}
                         {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
-
-                        <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
-                          <span className="text-[10px] font-medium">{m.time}</span>
-                          {isMe && <CheckCheck className="w-3 h-3" />}
-                        </div>
+                        <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none"><span className="text-[10px] font-medium">{m.time}</span>{isMe && <CheckCheck className="w-3 h-3" />}</div>
                       </div>
                     </div>
                   </React.Fragment>
@@ -587,45 +519,21 @@ export default function ChatPage() {
               })}
             </div>
 
-            {/* INPUT AREA */}
+            {/* INPUT */}
             <div className="p-4 bg-black/40 border-t border-white/10 backdrop-blur-md relative z-30">
-               {/* ... (Emoji & Sticker pickers remain same) ... */}
-               {showEmojiPicker && (
-                 <div className="absolute bottom-20 left-4 z-50 animate-in slide-in-from-bottom-5 fade-in">
-                   <EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} />
-                 </div>
-               )}
+               {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
                {showStickerPicker && (
-                 <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1a] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 animate-in slide-in-from-bottom-5 fade-in w-64">
-                   {STICKERS.map(s => (
-                     <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg transition-colors">{s}</button>
-                   ))}
+                 <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1a] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">
+                   {STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}
                  </div>
                )}
-
                <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner focus-within:border-indigo-500/50 focus-within:bg-white/10 transition-all">
-                  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className={cn("p-2 rounded-full transition-colors", showEmojiPicker ? "text-yellow-400 bg-white/10" : "text-white/50 hover:text-yellow-400 hover:bg-white/5")}><Smile className="w-6 h-6" /></button>
-                  <button onClick={() => setShowStickerPicker(!showStickerPicker)} className={cn("p-2 rounded-full transition-colors", showStickerPicker ? "text-pink-400 bg-white/10" : "text-white/50 hover:text-pink-400 hover:bg-white/5")}><Sticker className="w-5 h-5" /></button>
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400 hover:bg-white/5 rounded-full transition-colors"><Paperclip className="w-5 h-5" /></button>
+                  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400"><Smile className="w-6 h-6" /></button>
+                  <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400"><Sticker className="w-5 h-5" /></button>
+                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400"><Paperclip className="w-5 h-5" /></button>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-
-                  <input
-                    type="text"
-                    className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0"
-                    placeholder={isRecording ? "Listening..." : "Message..."}
-                    value={inputText}
-                    onChange={handleInputChange}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                    disabled={isRecording}
-                  />
-
-                  {inputText.trim() ? (
-                    <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white hover:scale-105 transition-transform shadow-lg shadow-indigo-500/25"><Send className="w-4 h-4" /></button>
-                  ) : (
-                    <button onClick={isRecording ? stopRecording : startRecording} className={cn("p-2 rounded-full transition-all duration-300", isRecording ? "bg-red-500 text-white animate-pulse scale-110 shadow-lg shadow-red-500/50" : "text-white/50 hover:text-red-400 hover:bg-white/5")}>
-                      {isRecording ? <StopCircle className="w-6 h-6" /> : <Mic className="w-5 h-5" />}
-                    </button>
-                  )}
+                  <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder={isRecording ? "Listening..." : "Message..."} value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} disabled={isRecording} />
+                  {inputText.trim() ? <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white"><Send className="w-4 h-4" /></button> : <button onClick={isRecording ? stopRecording : startRecording} className={cn("p-2 rounded-full", isRecording ? "bg-red-500 text-white animate-pulse" : "text-white/50 hover:text-red-400")}>{isRecording ? <StopCircle className="w-6 h-6" /> : <Mic className="w-5 h-5" />}</button>}
                </div>
             </div>
           </>
@@ -648,12 +556,8 @@ export default function ChatPage() {
                  <p className="text-white/50 text-xs">Incoming {incomingCall.isVideo ? "Video" : "Voice"} Call...</p>
              </div>
              <div className="flex gap-2 w-full">
-                 <button onClick={declineCall} className="flex-1 py-2 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition text-sm">
-                    Decline
-                 </button>
-                 <button onClick={answerCall} className="flex-1 py-2 bg-green-500 text-black font-bold rounded-xl hover:bg-green-400 transition shadow-lg shadow-green-500/20 text-sm">
-                    Answer
-                 </button>
+                 <button onClick={declineCall} className="flex-1 py-2 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition text-sm">Decline</button>
+                 <button onClick={answerCall} className="flex-1 py-2 bg-green-500 text-black font-bold rounded-xl hover:bg-green-400 transition text-sm">Answer</button>
              </div>
          </div>
        )}
@@ -661,13 +565,12 @@ export default function ChatPage() {
        {/* --- LIVEKIT CALL OVERLAY --- */}
        {isInCall && callToken && (
          <CallOverlay1on1
-            token={callToken}
-            roomName={currentRoomId}
-            onDisconnect={handleLocalDisconnect}
-            initialVideoEnabled={startWithVideo}
+           token={callToken}
+           roomName={currentRoomId}
+           onDisconnect={handleLocalDisconnect}
+           initialVideoEnabled={startWithVideo}
          />
        )}
-
     </div>
   );
 }
