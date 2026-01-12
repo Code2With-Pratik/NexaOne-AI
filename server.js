@@ -21,7 +21,7 @@ const prisma = new PrismaClient({ adapter });
 // Track Online Users (Map: userId -> socketId)
 const onlineUsers = new Map();
 
-// 👇 Track Active Meetings (Map: roomId -> { hostSocketId, hostUserId, waitingUsers: Set })
+// Track Active Meetings (Map: roomId -> { hostSocketId, hostUserId, waitingUsers: Set })
 const meetingRooms = new Map();
 
 app.prepare().then(() => {
@@ -76,60 +76,118 @@ app.prepare().then(() => {
       }
     });
 
-    // 4. CALLING EVENTS (1-on-1)
-    socket.on("outgoing_call", ({ callerId, calleeId, callerName, isVideo, roomId, logId }) => {
+    // ============================================================
+    // 4. 👇 CALLING EVENTS (UPDATED WITH DB LOGGING)
+    // ============================================================
+
+    // A. INITIATE CALL -> Create Log in DB
+    socket.on("outgoing_call", async ({ callerId, calleeId, callerName, isVideo, roomId }) => {
         console.log(`[Call] ${callerId} calling ${calleeId}`);
-        io.to(calleeId).emit("incoming_call", { callerId, callerName, isVideo, roomId, logId });
+        
+        try {
+            // 1. Create the Call Log immediately as "MISSED" (it updates if answered)
+            const log = await prisma.callLog.create({
+                data: {
+                    initiatorId: callerId,
+                    receiverId: calleeId,
+                    type: isVideo ? "VIDEO" : "AUDIO",
+                    status: "MISSED",
+                }
+            });
+
+            // 2. Send the call signal to receiver WITH the logId
+            io.to(calleeId).emit("incoming_call", { 
+                callerId, 
+                callerName, 
+                isVideo, 
+                roomId, 
+                logId: log.id 
+            });
+
+            // 3. Send the logId back to the caller (so they can update it too)
+            socket.emit("call_sent_success", { logId: log.id });
+
+        } catch (e) {
+            console.error("Error creating call log:", e);
+        }
     });
 
-    socket.on("call_accepted_signal", ({ callerId, roomId }) => {
+    // B. ANSWER CALL -> Update Log to "COMPLETED" (Connected)
+    socket.on("call_accepted_signal", async ({ callerId, roomId, logId }) => {
         io.to(callerId).emit("call_accepted", { roomId });
+        
+        if (logId) {
+            try {
+                await prisma.callLog.update({
+                    where: { id: logId },
+                    data: { status: "COMPLETED" } 
+                });
+            } catch (e) { console.error("Error updating log (accept):", e); }
+        }
     });
 
-    socket.on("end_call", ({ to }) => {
+    // C. REJECT CALL -> Update Log to "REJECTED"
+    socket.on("reject_call", async ({ callerId, logId }) => {
+        io.to(callerId).emit("call_rejected");
+
+        if (logId) {
+            try {
+                await prisma.callLog.update({
+                    where: { id: logId },
+                    data: { status: "REJECTED" }
+                });
+            } catch (e) { console.error("Error updating log (reject):", e); }
+        }
+    });
+
+    // D. END CALL -> Set End Time
+    socket.on("end_call", async ({ to, logId }) => {
         io.to(to).emit("call_ended");
+
+        if (logId) {
+            try {
+                await prisma.callLog.update({
+                    where: { id: logId },
+                    data: { endedAt: new Date() }
+                });
+            } catch (e) { console.error("Error updating log (end):", e); }
+        }
     });
 
     // ============================================================
-    // 5. 👇 GROUP MEETING GATEKEEPER EVENTS (Complete)
+    // 5. GROUP MEETING GATEKEEPER EVENTS
     // ============================================================
 
     // A. HOST STARTS MEETING
     socket.on("meeting_start", ({ roomId, userId }) => {
-        // Register this socket as the HOST for this room
         const roomData = meetingRooms.get(roomId) || { waiting: new Set() };
         roomData.hostSocketId = socket.id;
-        roomData.hostUserId = userId; // Important for Host Badge
+        roomData.hostUserId = userId; 
         meetingRooms.set(roomId, roomData);
         
         console.log(`[Meeting] Host ${userId} started room ${roomId}`);
     });
 
-    // B. GUEST REQUESTS TO JOIN (Knock Knock)
+    // B. GUEST REQUESTS TO JOIN
     socket.on("join_request", ({ roomId, user }) => {
         const roomData = meetingRooms.get(roomId);
 
         if (!roomData || !roomData.hostSocketId) {
-            // No host? Maybe auto-join or error. For now, tell guest host is missing.
             socket.emit("join_status", { status: "no_host" });
             return;
         }
 
         console.log(`[Meeting] ${user.name} requesting to join ${roomId}`);
         
-        // Notify HOST that someone is waiting
         io.to(roomData.hostSocketId).emit("guest_waiting", { 
             socketId: socket.id, 
             user: user 
         });
     });
 
-    // C. HOST PROCESSES REQUEST (Approve/Reject)
+    // C. HOST PROCESSES REQUEST
     socket.on("process_request", ({ guestSocketId, action }) => {
-        // action = "approved" | "rejected"
         console.log(`[Meeting] Guest ${guestSocketId} was ${action}`);
-        
-        // Notify the GUEST of the decision
         io.to(guestSocketId).emit("join_status", { status: action });
     });
 
@@ -138,20 +196,18 @@ app.prepare().then(() => {
         io.to(socketId).emit("kicked");
     });
 
-    // E. 👇 NEW: GUEST CANCELS REQUEST
+    // E. GUEST CANCELS REQUEST
     socket.on("cancel_request", ({ roomId }) => {
         const roomData = meetingRooms.get(roomId);
         if (roomData && roomData.hostSocketId) {
-            // Tell Host to remove this user from the list
             io.to(roomData.hostSocketId).emit("guest_cancelled", { socketId: socket.id });
         }
     });
 
-    // F. 👇 NEW: GET ROOM INFO (For Host Badge)
+    // F. GET ROOM INFO
     socket.on("get_room_info", ({ roomId }) => {
         const roomData = meetingRooms.get(roomId);
         if (roomData) {
-            // Send back the Host's User ID so clients can show the crown icon
             socket.emit("room_info", { hostIdentity: roomData.hostUserId });
         }
     });
@@ -169,10 +225,9 @@ app.prepare().then(() => {
         }
       }
 
-      // Cleanup Meetings (If Host leaves, maybe warn others?)
+      // Cleanup Meetings
       for (const [roomId, data] of meetingRooms.entries()) {
           if (data.hostSocketId === socket.id) {
-              // Host disconnected
               console.log(`[Meeting] Host disconnected from ${roomId}`);
               meetingRooms.delete(roomId);
           }

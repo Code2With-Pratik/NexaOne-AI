@@ -1,23 +1,30 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server"; // ✅ FIXED: Import from '/server'
+import { db } from "@/lib/db"; // ✅ FIXED: Import singleton 'db' instead of 'new PrismaClient()'
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+    const user = await currentUser();
+    
+    if (!user) {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
 
-    // Fetch calls where I am initiator OR receiver
+    // Use 'db' instead of 'prisma'
     const logs = await db.callLog.findMany({
       where: {
         OR: [
-          { initiatorId: userId },
-          { receiverId: userId }
+          { initiatorId: user.id },
+          { receiverId: user.id }
         ]
       },
       include: {
-        initiator: { select: { fullName: true, imageUrl: true } },
-        receiver: { select: { fullName: true, imageUrl: true } }
+        initiator: {
+          select: { name: true, image: true, clerkId: true }
+        },
+        receiver: {
+          select: { name: true, image: true, clerkId: true }
+        }
       },
       orderBy: {
         startedAt: 'desc'
@@ -26,7 +33,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(logs);
   } catch (error) {
-    console.log("[CALL_HISTORY]", error);
+    console.error("[CALL_LOGS_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

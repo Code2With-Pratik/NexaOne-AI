@@ -60,7 +60,7 @@ const sidebarItems: SidebarItem[] = [
     subItems: [
       { name: "Live Chat", href: "/dashboard/chat", icon: MessageSquare, color: "text-emerald-400" },
       { name: "Group Meeting", href: "/dashboard/meeting", icon: Users, color: "text-yellow-400" },
-      { name: "Call Logs", href: "/dashboard/calls",icon: Phone, color: "text-red-500" }, // Optional: choose a color
+      { name: "Call Logs", href: "/dashboard/call-logs",icon: Phone, color: "text-red-500" }, // Optional: choose a color
     ]
   },
   { 
