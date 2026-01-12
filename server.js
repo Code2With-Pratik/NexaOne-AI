@@ -35,7 +35,9 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
-    // 1. JOIN EVENT: User comes online (Global App Presence)
+    // ============================================================
+    // 1. USER PRESENCE & STATUS
+    // ============================================================
     socket.on("join", (userId) => {
       socket.join(userId); 
       onlineUsers.set(userId, socket.id); 
@@ -45,7 +47,9 @@ app.prepare().then(() => {
       socket.emit("current_online_list", Array.from(onlineUsers.keys()));
     });
 
-    // 2. TYPING EVENTS
+    // ============================================================
+    // 2. TYPING INDICATORS
+    // ============================================================
     socket.on("typing", ({ senderId, receiverId }) => {
       io.to(receiverId).emit("display_typing", { senderId });
     });
@@ -54,13 +58,15 @@ app.prepare().then(() => {
       io.to(receiverId).emit("hide_typing", { senderId });
     });
 
-    // 3. MESSAGE EVENT
+    // ============================================================
+    // 3. MESSAGING (TEXT + FILE SUPPORT)
+    // ============================================================
     socket.on("send_message", async (data) => {
       try {
         const savedMsg = await prisma.message.create({
           data: {
             content: data.text,
-            type: data.type,
+            type: data.type, // Supports 'text', 'image', 'voice', 'sticker', 'file'
             senderId: String(data.senderId),
             receiverId: String(data.receiverId)
           }
@@ -76,8 +82,14 @@ app.prepare().then(() => {
       }
     });
 
+    // 👇 NEW: READ RECEIPTS
+    socket.on("mark_messages_read", ({ senderId, receiverId }) => {
+        // Notify the SENDER that their messages were read
+        io.to(senderId).emit("messages_read_update", { receiverId });
+    });
+
     // ============================================================
-    // 4. 👇 CALLING EVENTS (UPDATED WITH DB LOGGING)
+    // 4. CALLING EVENTS (1-on-1)
     // ============================================================
 
     // A. INITIATE CALL -> Create Log in DB
@@ -85,7 +97,7 @@ app.prepare().then(() => {
         console.log(`[Call] ${callerId} calling ${calleeId}`);
         
         try {
-            // 1. Create the Call Log immediately as "MISSED" (it updates if answered)
+            // 1. Create the Call Log immediately as "MISSED"
             const log = await prisma.callLog.create({
                 data: {
                     initiatorId: callerId,
@@ -112,7 +124,7 @@ app.prepare().then(() => {
         }
     });
 
-    // B. ANSWER CALL -> Update Log to "COMPLETED" (Connected)
+    // B. ANSWER CALL -> Update Log to "COMPLETED"
     socket.on("call_accepted_signal", async ({ callerId, roomId, logId }) => {
         io.to(callerId).emit("call_accepted", { roomId });
         
@@ -142,7 +154,8 @@ app.prepare().then(() => {
 
     // D. END CALL -> Set End Time
     socket.on("end_call", async ({ to, logId }) => {
-        io.to(to).emit("call_ended");
+        // If 'to' is provided, notify them to disconnect too
+        if (to) io.to(to).emit("call_ended");
 
         if (logId) {
             try {
@@ -162,32 +175,37 @@ app.prepare().then(() => {
     socket.on("meeting_start", ({ roomId, userId }) => {
         const roomData = meetingRooms.get(roomId) || { waiting: new Set() };
         roomData.hostSocketId = socket.id;
-        roomData.hostUserId = userId; 
+        roomData.hostUserId = userId; // Important for Host Badge
         meetingRooms.set(roomId, roomData);
         
         console.log(`[Meeting] Host ${userId} started room ${roomId}`);
     });
 
-    // B. GUEST REQUESTS TO JOIN
+    // B. GUEST REQUESTS TO JOIN (Knock Knock)
     socket.on("join_request", ({ roomId, user }) => {
         const roomData = meetingRooms.get(roomId);
 
         if (!roomData || !roomData.hostSocketId) {
+            // No host? Maybe auto-join or error.
             socket.emit("join_status", { status: "no_host" });
             return;
         }
 
         console.log(`[Meeting] ${user.name} requesting to join ${roomId}`);
         
+        // Notify HOST that someone is waiting
         io.to(roomData.hostSocketId).emit("guest_waiting", { 
             socketId: socket.id, 
             user: user 
         });
     });
 
-    // C. HOST PROCESSES REQUEST
+    // C. HOST PROCESSES REQUEST (Approve/Reject)
     socket.on("process_request", ({ guestSocketId, action }) => {
+        // action = "approved" | "rejected"
         console.log(`[Meeting] Guest ${guestSocketId} was ${action}`);
+        
+        // Notify the GUEST of the decision
         io.to(guestSocketId).emit("join_status", { status: action });
     });
 
@@ -204,7 +222,7 @@ app.prepare().then(() => {
         }
     });
 
-    // F. GET ROOM INFO
+    // F. GET ROOM INFO (For Host Badge)
     socket.on("get_room_info", ({ roomId }) => {
         const roomData = meetingRooms.get(roomId);
         if (roomData) {
@@ -213,8 +231,8 @@ app.prepare().then(() => {
     });
 
     // ============================================================
-
-    // 6. DISCONNECT
+    // 6. DISCONNECT & CLEANUP
+    // ============================================================
     socket.on("disconnect", () => {
       // Cleanup Online Users
       for (const [userId, socketId] of onlineUsers.entries()) {
