@@ -122,15 +122,15 @@ export function Testimonials() {
     <section id="testimonials" className="py-24 relative overflow-hidden bg-black/20">
       
       <div className="text-center mb-16 px-6 relative z-10">
-        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 mb-4">
-          Loved by our Users
+        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r text-white mb-4">
+          Loved by our <span className="text-indigo-400">Users</span> 
         </h2>
         <p className="text-white/50 text-lg">
-          See what the community has to say about the AI Super App.
+          See what the community has to say about the NexaOneAI.
         </p>
       </div>
 
-      <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-12">
         {/* ROW 1: Slower Speed (-0.8) */}
         <ParallaxText baseVelocity={-0.8}>
            {reviews.map((review, i) => (
@@ -153,35 +153,47 @@ export function Testimonials() {
 // --- CARD COMPONENT ---
 function TestimonialCard({ review }: { review: Testimonial }) {
   return (
-    <div className="w-[300px] md:w-[400px] bg-black/25 border-3 border-white/15 p-6 rounded-2xl hover:bg-indigo-700 transition duration-300 relative group flex-shrink-0 whitespace-normal select-none">
-      <Quote className="absolute top-4 right-4 w-6 h-6 text-green-400 group-hover:text-white transition-colors" />
+    <div className="relative w-[320px] md:w-[400px] p-8 rounded-3xl bg-gradient-to-b from-black/20 to-indigo-900/30 
+     border-3 border-white/10 shadow-2xl transition-all duration-500
+
+      hover:bg-indigo-900/15 /* Slight internal brighten */
+      hover:border-indigo-500/50 /* Border lights up */
+      hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.6)] /* The Indigo colored glow shadow */
+      hover:-translate-y-1 /* Subtle lift */
       
-      <div className="flex items-center gap-1 mb-3">
-        {[...Array(5)].map((_, i) => (
-          <Star 
-            key={i} 
-            className={cn("w-5 h-5", i < review.rating ? "fill-yellow-400 text-yellow-200" : "text-white/50")} 
-          />
-        ))}
+      group flex-shrink-0 whitespace-normal select-none mr-6 /* Add margin for spacing */
+    ">
+      {/* Top Right Quote Icon - updated hover color to match glow */}
+      <Quote className="absolute top-8 right-8 w-6 h-6 text-white/30 group-hover:text-indigo-400/50 transition-colors" />
+      
+      {/* THE NEW RATING PILL */}
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8">
+         <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+         {/* Displaying rating as "5.0" */}
+         <span className="text-sm font-bold text-white/90">{review.rating}.0</span>
       </div>
 
-      <p className="text-white/80 leading-relaxed mb-6 text-sm line-clamp-4 min-h-[80px]">
+      {/* Message text - slightly larger font for modern feel */}
+      <p className="text-white/80 leading-relaxed mb-8 text-base line-clamp-4 font-sans">
         "{review.message}"
       </p>
 
-      <div className="flex items-center gap-3 border-t border-white/5 pt-4">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0">
+      {/* Footer Section - Integrated your existing user details */}
+      <div className="flex items-center gap-4">
+        {/* Avatar - Switched to rounded square to match modern aesthetic */}
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white uppercase shrink-0 shadow-lg shadow-indigo-500/20">
             {review.avatar ? (
-                <img src={review.avatar} alt={review.name} className="w-full h-full rounded-full object-cover" />
+                <img src={review.avatar} alt={review.name} className="w-full h-full rounded-2xl object-cover" />
             ) : (
                 review.name.substring(0, 2)
             )}
         </div>
         <div>
-          <h4 className="text-white flex gap-2 font-semibold text-sm">{review.name}
-           <BadgeCheck className="w-4 h-4 mt-0.5 text-blue-400 fill-blue-400/10" />
+          <h4 className="text-white flex items-center gap-2 font-bold text-base leading-none mb-1">{review.name}
+           {/* Added explicit text color to badge for better contrast against glass */}
+           <BadgeCheck className="w-4 h-4 text-blue-400 fill-blue-400/10" />
           </h4>
-          <p className="text-white/80 text-[10px] font-semibold uppercase tracking-wider">Verified User
+          <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Verified User
           </p>
         </div>
       </div>

@@ -94,23 +94,25 @@ export const Sidebar = () => {
   return (
     <aside 
       className={cn(
-        "h-screen bg-black/20 backdrop-blur-xl border-r border-white/10 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out",
+        "h-screen bg-black/20 backdrop-blur-sm border-r border-white/10 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out",
         isSidebarOpen 
-          ? "w-64 translate-x-0" 
+          ? "w-68 translate-x-0" 
           : "w-64 -translate-x-full md:translate-x-0 md:w-20"
       )}
     >
       
       {/* Brand Logo */}
       <div className={cn("h-16 flex items-center border-b border-white/10 transition-all", isSidebarOpen ? "px-6" : "justify-center px-0")}>
-        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
           <a href="http://localhost:3000/">
-            <span className="font-bold text-white">A</span>
+            <span className="font-bold text-white">
+              <img src="favicon.ico" alt="Brand icon" />
+            </span>
           </a>
         </div>
-        <span className={cn("font-bold text-lg text-white ml-3 transition-opacity duration-200", !isSidebarOpen && "hidden md:hidden opacity-0")}>
+        <span className={cn("font-bold text-lg text-white ml-1 transition-opacity duration-200", !isSidebarOpen && "hidden md:hidden opacity-0")}>
           <a href="http://localhost:3000/">
-             AI<span className="text-indigo-400">SuperApp</span>
+            NexaOne <span className="text-indigo-400">AI</span>
           </a>
         </span>
       </div>

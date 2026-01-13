@@ -37,7 +37,7 @@ export default function DashboardLayout({
         <header className="h-16 shrink-0 border-b border-white/10 flex items-center justify-between px-6 bg-black/10 backdrop-blur-md sticky top-0 z-30">
           <button 
             onClick={toggleSidebar}
-            className="p-2 -ml-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+            className="p-2 -ml-5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
           >
             <Menu className="w-6 h-6" />
           </button>

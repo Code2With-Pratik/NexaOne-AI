@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-// 👇 IMPORT THE NEW COMPONENT
 import FeedbackForm from "@/components/dashboard/FeedbackForm";
 
 // --- CONFIGURATION ---
@@ -34,8 +33,22 @@ const mockHistory = [
   { tool: "Article Writer", detail: "Future of AI in 2026", time: "3 hours ago" },
 ];
 
+// --- RANDOM TIPS ARRAY ---
+const proTips = [
+  "Draft a blog post with the Article Writer, then paste the title into the Image Generator for matching art!",
+  "For better results, be specific! Add styles like 'cyberpunk', 'minimalist', or 'oil painting' to your image prompts.",
+  "Need to rewrite an email? Paste it into the AI Chatbot and ask it to 'make this sound more professional'.",
+  "Don't lose your best ideas! Check the 'History' tab to find all your past generations.",
+  "You can use the Caption Generator to create variations for Instagram, Twitter, and LinkedIn from a single idea."
+];
+
 export default function DashboardPage() {
   const router = useRouter();
+
+  // Select a random tip on mount (stable across re-renders)
+  const randomTip = React.useMemo(() => {
+    return proTips[Math.floor(Math.random() * proTips.length)];
+  }, []);
 
   return (
     <div className="mb-8 space-y-10">
@@ -101,20 +114,19 @@ export default function DashboardPage() {
 
           {/* RIGHT: Feedback Form (Integrated Component) */}
           <div className="flex flex-col h-full">
-             {/* We wrap it to match height if needed, or just let it flow */}
              <FeedbackForm />
           </div>
 
       </div>
       
-      {/* 4. PRO TIP CARD */}
+      {/* 4. PRO TIP CARD (Dynamic) */}
       <div className="px-4 md:px-20 lg:px-32 pb-8">
         <div className="bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border border-white/10 rounded-xl p-4 flex items-center gap-4">
            <div className="p-2 bg-blue-500/20 rounded-full shrink-0">
               <Sparkles className="w-5 h-5 text-blue-300" />
            </div>
            <p className="text-sm text-white/80">
-             <span className="font-bold text-blue-200">Pro Tip:</span> Connect your feedback form to a database later to collect real user testimonials!
+             <span className="font-bold text-blue-200">Pro Tip:</span> {randomTip}
            </p>
         </div>
       </div>

@@ -79,7 +79,7 @@ export const DynamicNavbar = () => {
               <span className="text-white font-bold text-lg">A</span>
             </div>
             <span className="font-bold text-xl tracking-tight text-white hidden sm:block">
-              AI<span className="text-indigo-400">SuperApp</span>
+              NexaOne<span className="text-indigo-400"> AI</span>
             </span>
           </Link>
 
