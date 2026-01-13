@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { Star, Quote, Loader2 } from "lucide-react";
+import { Star, Quote, Loader2 , BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   motion,
@@ -153,14 +153,14 @@ export function Testimonials() {
 // --- CARD COMPONENT ---
 function TestimonialCard({ review }: { review: Testimonial }) {
   return (
-    <div className="w-[300px] md:w-[400px] bg-[#1a1a1a] border border-white/5 p-6 rounded-2xl hover:bg-white/5 transition duration-300 relative group flex-shrink-0 whitespace-normal select-none">
-      <Quote className="absolute top-4 right-4 w-6 h-6 text-indigo-500/20 group-hover:text-indigo-500/40 transition-colors" />
+    <div className="w-[300px] md:w-[400px] bg-black/25 border-3 border-white/15 p-6 rounded-2xl hover:bg-indigo-700 transition duration-300 relative group flex-shrink-0 whitespace-normal select-none">
+      <Quote className="absolute top-4 right-4 w-6 h-6 text-green-400 group-hover:text-white transition-colors" />
       
       <div className="flex items-center gap-1 mb-3">
         {[...Array(5)].map((_, i) => (
           <Star 
             key={i} 
-            className={cn("w-3.5 h-3.5", i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-white/10")} 
+            className={cn("w-5 h-5", i < review.rating ? "fill-yellow-400 text-yellow-200" : "text-white/50")} 
           />
         ))}
       </div>
@@ -178,8 +178,11 @@ function TestimonialCard({ review }: { review: Testimonial }) {
             )}
         </div>
         <div>
-          <h4 className="text-white font-semibold text-sm">{review.name}</h4>
-          <p className="text-white/40 text-[10px] uppercase tracking-wider">Verified User</p>
+          <h4 className="text-white flex gap-2 font-semibold text-sm">{review.name}
+           <BadgeCheck className="w-4 h-4 mt-0.5 text-blue-400 fill-blue-400/10" />
+          </h4>
+          <p className="text-white/80 text-[10px] font-semibold uppercase tracking-wider">Verified User
+          </p>
         </div>
       </div>
     </div>
