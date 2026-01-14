@@ -1,171 +1,134 @@
-"use client";
+import { db } from "@/lib/db";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { format } from "date-fns";
+import { Zap, Calendar, Mail, User as UserIcon, CreditCard, ExternalLink } from "lucide-react";
+import { ProTipsCarousel } from "@/components/dashboard/ProTipsCarousel";
 
-import React, { useState } from "react";
-import { cn } from "@/lib/utils";
-import { 
-  CreditCard, 
-  Bell
-} from "lucide-react";
+export default async function SettingsPage() {
+  const { userId } = await auth();
+  const user = await currentUser();
 
-// Define the available tabs (Only Billing & Notifications)
-type Tab = "billing" | "notifications";
+  if (!userId || !user) redirect("/sign-in");
 
-export default function SettingsPage() {
-  // Set default tab to "billing" since profile is gone
-  const [activeTab, setActiveTab] = useState<Tab>("billing");
+  // Fetch DB user for credits & member date
+  const dbUser = await db.user.findUnique({
+    where: { clerkId: userId }
+  });
+
+  if (!dbUser) return null;
+
+  // Logic to determine Plan Name based on credits (or your own logic)
+  const planName = dbUser.creditBalance > 1000 ? "Ultra Plan" : dbUser.creditBalance > 100 ? "Pro Plan" : "Free Plan";
+  const planColor = planName === "Ultra Plan" ? "text-purple-400 border-purple-500/50 bg-purple-500/10" : 
+                    planName === "Pro Plan" ? "text-indigo-400 border-indigo-500/50 bg-indigo-500/10" : 
+                    "text-gray-400 border-white/10 bg-white/5";
 
   return (
-    <div className="max-w-6xl mx-auto min-h-[calc(100vh-8rem)]">
-      <h1 className="text-3xl font-bold text-white mb-8">Settings</h1>
+    <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-white">My Account</h1>
+        <p className="text-white/50">Manage your profile and subscription details.</p>
+      </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="grid gap-6 md:grid-cols-2">
         
-        {/* LEFT: Settings Navigation */}
-        <div className="w-full md:w-64 space-y-2">
-          <SettingsTab 
-            label="Billing & Plans" 
-            icon={CreditCard} 
-            active={activeTab === "billing"} 
-            onClick={() => setActiveTab("billing")} 
-          />
-          <SettingsTab 
-            label="Notifications" 
-            icon={Bell} 
-            active={activeTab === "notifications"} 
-            onClick={() => setActiveTab("notifications")} 
-          />
-        </div>
+        {/* CARD 1: PROFILE & CREDITS */}
+        <Card className="bg-[#4f39f612] border-2 border-white/10 text-white shadow-xl relative overflow-hidden">
+          {/* Decorative background blur */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+          
+          <CardHeader className="pb-4 border-b border-white/5">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <UserIcon className="w-5 h-5 text-indigo-400" /> Profile Details
+            </CardTitle>
+          </CardHeader>
+          
+          <CardContent className="space-y-6 pt-6">
+            {/* User Info Row */}
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16 border-2 border-white/10 shadow-lg">
+                <AvatarImage src={user.imageUrl} />
+                <AvatarFallback className="bg-indigo-600 text-white">{user.firstName?.[0]}</AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold leading-none">{user.fullName}</h3>
+                <div className="flex items-center gap-1.5 text-sm text-white/50">
+                   <Mail className="w-3 h-3" /> {user.emailAddresses[0].emailAddress}
+                </div>
+              </div>
+            </div>
 
-        {/* RIGHT: Content Area */}
-        <div className="flex-1 bg-transparent border border-white/25 rounded-2xl p-8 shadow-xl">
-          {activeTab === "billing" && <BillingSection />}
-          {activeTab === "notifications" && <NotificationsSection />}
-        </div>
+            {/* Grid Stats */}
+            <div className="grid grid-cols-2 gap-4">
+                {/* Credit Balance */}
+                <div className="p-4 bg-black/20 rounded-xl border border-white/5 space-y-1">
+                    <div className="flex items-center gap-2 text-white/60 text-xs uppercase font-bold tracking-wider">
+                        <Zap className="w-3 h-3 text-yellow-500" /> Credits
+                    </div>
+                    <div className="text-2xl font-mono font-bold text-white">
+                        {dbUser.creditBalance}
+                    </div>
+                </div>
+
+                {/* Joined Date */}
+                <div className="p-4 bg-black/20 rounded-xl border border-white/5 space-y-1">
+                    <div className="flex items-center gap-2 text-white/60 text-xs uppercase font-bold tracking-wider">
+                        <Calendar className="w-3 h-3 text-blue-400" /> Joined
+                    </div>
+                    <div className="text-lg font-medium text-white">
+                        {format(dbUser.createdAt, "MMM d, yyyy")}
+                    </div>
+                </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CARD 2: CURRENT PLAN */}
+        <Card className="bg-[#4f39f612] border-2 border-white/10 text-white shadow-xl flex flex-col">
+          <CardHeader className="pb-4 border-b border-white/5">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CreditCard className="w-5 h-5 text-green-400" /> Subscription
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="flex-1 pt-6 space-y-6">
+             <div className="space-y-2">
+                 <h4 className="text-sm font-medium text-white/60 uppercase tracking-wide">Current Plan</h4>
+                 <div className={`inline-flex items-center px-4 py-2 rounded-lg border ${planColor}`}>
+                     <span className="font-bold text-lg">{planName}</span>
+                     {planName !== "Free Plan" && <Badge className="ml-3 bg-green-500 hover:bg-green-600 text-white border-0">ACTIVE</Badge>}
+                 </div>
+             </div>
+
+             <div className="space-y-2">
+                 <p className="text-sm text-white/50">
+                    {planName === "Free Plan" 
+                        ? "Upgrade to Pro to unlock higher limits and faster generation speeds." 
+                        : "Your plan renews automatically. You can cancel anytime."}
+                 </p>
+             </div>
+          </CardContent>
+
+          <CardFooter className="pt-6 border-t border-white/5 bg-black/10">
+             {/* If using Stripe Customer Portal, you would link to it here */}
+             <Button className="w-full gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10" variant="outline">
+                 Manage Subscription <ExternalLink className="w-4 h-4 opacity-50" />
+             </Button>
+          </CardFooter>
+        </Card>
 
       </div>
+
+      {/* 👇 PRO TIPS SECTION */}
+      <div className="pt-2">
+         <ProTipsCarousel />
+      </div>
+
     </div>
   );
 }
-
-// --- SUB-COMPONENTS FOR EACH SECTION ---
-
-const BillingSection = () => {
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
-      {/* Current Plan Card */}
-      <div className="bg-linear-to-r from-indigo-900/50 to-purple-900/50 border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden">
-         <div className="relative z-10 flex justify-between items-start">
-           <div>
-             <p className="text-indigo-300 text-xs font-bold uppercase tracking-wider mb-2">Current Plan</p>
-             <h3 className="text-3xl font-bold text-white mb-2">Pro Creator</h3>
-             <p className="text-white/60 text-sm mb-6">Renews on Oct 24, 2025</p>
-             <button className="px-4 py-2 bg-white text-indigo-900 rounded-lg text-sm font-bold hover:bg-indigo-50 transition-colors">
-               Manage Subscription
-             </button>
-           </div>
-           <div className="text-right">
-             <div className="text-4xl font-bold text-white">$29<span className="text-lg text-white/40 font-normal">/mo</span></div>
-           </div>
-         </div>
-         {/* Decorative Glow */}
-         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none" />
-      </div>
-
-      {/* Credit Usage */}
-      <div>
-        <h3 className="text-lg font-bold text-white mb-4">Credit Usage</h3>
-        <div className="space-y-4">
-           <div>
-             <div className="flex justify-between text-sm mb-2">
-               <span className="text-white/70">AI Image Generation</span>
-               <span className="text-white font-mono">450 / 1000</span>
-             </div>
-             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-               <div className="h-full w-[45%] bg-pink-500 rounded-full" />
-             </div>
-           </div>
-           <div>
-             <div className="flex justify-between text-sm mb-2">
-               <span className="text-white/70">GPT-4 Words</span>
-               <span className="text-white font-mono">12k / 50k</span>
-             </div>
-             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-               <div className="h-full w-[24%] bg-indigo-500 rounded-full" />
-             </div>
-           </div>
-        </div>
-      </div>
-
-      {/* Invoice History */}
-      <div>
-        <h3 className="text-lg font-bold text-white mb-4">Invoices</h3>
-        <div className="border border-white/10 rounded-xl overflow-hidden">
-          {[
-            { date: "Oct 01, 2025", amount: "$29.00", status: "Paid" },
-            { date: "Sep 01, 2025", amount: "$29.00", status: "Paid" },
-            { date: "Aug 01, 2025", amount: "$29.00", status: "Paid" },
-          ].map((inv, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-white/5 border-b border-white/5 last:border-0">
-               <div className="flex items-center gap-4">
-                 <div className="p-2 bg-white/5 rounded-lg text-white/60"><CreditCard className="w-4 h-4" /></div>
-                 <span className="text-sm text-white font-medium">{inv.date}</span>
-               </div>
-               <div className="flex items-center gap-6">
-                 <span className="text-sm text-white/60">{inv.amount}</span>
-                 <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold">{inv.status}</span>
-               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const NotificationsSection = () => {
-  return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <h3 className="text-lg font-bold text-white mb-4">Email Notifications</h3>
-      
-      {[
-        { title: "Weekly Performance Report", desc: "Get a summary of your AI usage every Monday." },
-        { title: "Product Updates", desc: "Receive news about new features and improvements." },
-        { title: "Security Alerts", desc: "Get notified about login attempts from new devices." }
-      ].map((item, i) => (
-        <div key={i} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
-           <div>
-             <h4 className="font-medium text-white">{item.title}</h4>
-             <p className="text-xs text-white/50">{item.desc}</p>
-           </div>
-           <label className="relative inline-flex items-center cursor-pointer">
-             <input type="checkbox" defaultChecked={i === 0 || i === 2} className="sr-only peer" />
-             <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-           </label>
-        </div>
-      ))}
-
-      <div className="pt-6">
-         <button className="px-6 py-3 bg-white text-black hover:bg-white/90 rounded-xl font-bold text-sm transition-colors">
-           Save Preferences
-         </button>
-      </div>
-    </div>
-  );
-};
-
-// Helper for Sidebar Tabs
-const SettingsTab = ({ label, icon: Icon, active, onClick }: { label: string; icon: any; active: boolean; onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className={cn(
-      "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
-      active 
-        ? "bg-white/10 text-white shadow-lg" 
-        : "text-white/50 hover:bg-white/5 hover:text-white"
-    )}
-  >
-    <Icon className={cn("w-5 h-5", active ? "text-indigo-400" : "text-white/40")} />
-    {label}
-  </button>
-);
