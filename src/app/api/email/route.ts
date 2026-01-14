@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { checkApiLimit, deductCredits } from "@/lib/api-limit";
+import { db } from "@/lib/db";
 
-// Initialize Groq
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: Request) {
@@ -14,7 +15,12 @@ export async function POST(req: Request) {
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
     if (!process.env.GROQ_API_KEY) return new NextResponse("API Key Missing", { status: 500 });
     
-    // We use Llama 3 70b because it is excellent at following tone instructions
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
+    }
+
     const completion = await groq.chat.completions.create({
       messages: [
         {
@@ -36,11 +42,24 @@ export async function POST(req: Request) {
         }
       ],
       model: "openai/gpt-oss-20b", 
-      temperature: 0.6, // Slightly lower temperature for more consistent/professional results
+      temperature: 0.6,
       max_tokens: 1024,
     });
 
     const text = completion.choices[0]?.message?.content || "";
+
+    // 2. DEDUCT CREDITS
+    await deductCredits(1);
+
+    // 3. SAVE HISTORY
+    await db.history.create({
+      data: {
+        userId,
+        tool: "Email Generator",
+        query: `Email to ${recipient} about ${context.substring(0, 50)}...`,
+        result: text
+      }
+    });
 
     return NextResponse.json(text);
 

@@ -1,11 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk"; // 1. Import Groq
+import Groq from "groq-sdk";
+import { checkApiLimit, deductCredits } from "@/lib/api-limit";
+import { db } from "@/lib/db";
 
-// 2. Initialize Groq Client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: Request) {
   try {
@@ -15,9 +14,14 @@ export async function POST(req: Request) {
 
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
     if (!process.env.SERPER_API_KEY) return new NextResponse("Serper Key Missing", { status: 500 });
-    // Note: Make sure GROQ_API_KEY is in your .env file!
 
-    // --- A. Perform Search (Serper) ---
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
+    }
+
+    // --- A. Perform Search ---
     let url = "https://google.serper.dev/search";
     if (type === "images") url = "https://google.serper.dev/images";
     if (type === "videos") url = "https://google.serper.dev/videos";
@@ -39,12 +43,10 @@ export async function POST(req: Request) {
     const data = await serperResponse.json();
 
     // --- B. Generate AI Overview (Groq) ---
-    // Only run for "search" tab on the first page
     let aiOverview = null;
 
     if (type === "search" && page === 1 && data.organic && data.organic.length > 0) {
       try {
-        // Prepare context from top 4 results
         const context = data.organic.slice(0, 4).map((item: any) => item.snippet).join("\n");
         
         const aiResponse = await groq.chat.completions.create({
@@ -58,7 +60,6 @@ export async function POST(req: Request) {
               content: `User Query: ${query}\n\nSearch Snippets:\n${context}` 
             }
           ],
-          // 3. Use a Fast Groq Model (Llama 3 is great here)
           model: "openai/gpt-oss-20b", 
           temperature: 0.5,
           max_tokens: 200,
@@ -70,7 +71,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Return combined data
+    // 2. DEDUCT CREDITS
+    await deductCredits(1);
+
+    // 3. SAVE HISTORY
+    // If we have an AI overview, save that. If not, just save a confirmation msg.
+    await db.history.create({
+      data: {
+        userId,
+        tool: "Search Engine",
+        query: query,
+        result: aiOverview ? aiOverview : `Search results for "${query}"`
+      }
+    });
+
     return NextResponse.json({ ...data, aiOverview });
 
   } catch (error) {

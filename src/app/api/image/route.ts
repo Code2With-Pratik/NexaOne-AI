@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
+import { checkApiLimit, deductCredits } from "@/lib/api-limit";
+import { db } from "@/lib/db"; // For history logging
+
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
@@ -17,6 +20,12 @@ export async function POST(req: Request) {
 
     if (!prompt) {
       return new NextResponse("Prompt is required", { status: 400 });
+    }
+
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
     }
 
     // We will use the powerful "Stable Diffusion XL" model
@@ -45,6 +54,20 @@ export async function POST(req: Request) {
     const buffer = await response.arrayBuffer();
     const base64Image = Buffer.from(buffer).toString("base64");
     const imageUrl = `data:image/jpeg;base64,${base64Image}`;
+
+    // 2. DEDUCT CREDITS (Cost: 5 credits for an image)
+    // We deduct AFTER we confirm the image generated successfully
+    await deductCredits(5);
+
+    // 3. SAVE TO HISTORY
+    await db.history.create({
+      data: {
+        userId: userId,
+        tool: "Image Generator",
+        query: prompt,
+        result: imageUrl // NOTE: For production, better to upload to Cloudinary/S3 and store the URL here
+      }
+    });
 
     return NextResponse.json(imageUrl);
 

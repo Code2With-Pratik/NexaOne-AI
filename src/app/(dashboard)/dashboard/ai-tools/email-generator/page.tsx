@@ -2,10 +2,17 @@
 
 import React, { useState, useRef } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import { Mail, Send, Copy, RotateCcw, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ProModal } from "@/components/pro-modal";
+import { useReactToPrint } from "react-to-print"; // 1. Import the robust print library
 
 export default function EmailGeneratorPage() {
+  const router = useRouter();
+  
+  // --- STATE ---
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedEmail, setGeneratedEmail] = useState("");
   const [formData, setFormData] = useState({
@@ -14,10 +21,12 @@ export default function EmailGeneratorPage() {
     context: ""
   });
   const [copied, setCopied] = useState(false);
+  const [proModalOpen, setProModalOpen] = useState(false);
   
   // Ref for PDF generation
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // --- GENERATE LOGIC ---
   const handleGenerate = async () => {
     try {
       setIsGenerating(true);
@@ -30,16 +39,23 @@ export default function EmailGeneratorPage() {
       });
 
       setGeneratedEmail(response.data);
+      router.refresh();
 
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      alert("Something went wrong. Please try again.");
+      
+      // Check for 403 (Credits)
+      if (error?.response?.status === 403) {
+        setProModalOpen(true);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // --- MOBILE SAFE COPY ---
+  // --- COPY LOGIC ---
   const handleCopy = async () => {
     const textToCopy = generatedEmail;
 
@@ -67,35 +83,37 @@ export default function EmailGeneratorPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      alert("Copy failed manually.");
+      toast.error("Copy failed manually.");
     }
   };
 
-  // --- PDF DOWNLOAD ---
-  const handleDownloadPDF = async () => {
-    if (!contentRef.current) return;
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const element = contentRef.current;
-      const opt = {
-        margin: [20, 20, 20, 20],
-        filename: `email-draft-${Date.now()}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().set(opt).from(element).save();
-    } catch (error) {
-      console.error("PDF failed", error);
+  // --- 2. NEW: ROBUST PDF DOWNLOAD ---
+  const handleDownloadPDF = useReactToPrint({
+    contentRef: contentRef,
+    documentTitle: `Email-Draft-${Date.now()}`,
+    onBeforeGetContent: () => {
+      if (!generatedEmail) {
+        toast.error("Generate an email first!");
+        return Promise.reject();
+      }
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
+        toast.success("PDF Downloaded successfully");
     }
-  };
+  });
 
   return (
     <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-8">
       
+      <ProModal 
+        isOpen={proModalOpen} 
+        onClose={() => setProModalOpen(false)} 
+      />
+
       {/* LEFT: Input Form */}
       <div className="w-full md:w-1/3 space-y-6">
-        <div className="bg-white/2 border-3 border-white/10 rounded-2xl p-6 space-y-5 shadow-xl">
+        <div className="bg-white/5 border-3 border-white/10 rounded-2xl p-6 space-y-5 shadow-xl backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-indigo-500/20 rounded-lg"><Mail className="w-5 h-5 text-indigo-400" /></div>
             <h2 className="font-bold text-white">Email Details</h2>
@@ -161,9 +179,9 @@ export default function EmailGeneratorPage() {
       </div>
 
       {/* RIGHT: Preview Pane */}
-      <div className="flex-1 bg-white/2 border-3 border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-xl relative">
+      <div className="flex-1 bg-white/5 border-3 border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-xl relative backdrop-blur-sm">
         
-        {/* --- TOOLBAR (Buttons are here) --- */}
+        {/* --- TOOLBAR --- */}
         <div className="h-14 border-b border-white/10 bg-black/20 flex items-center justify-between px-6 shrink-0">
           <span className="text-xs font-mono text-white/40">PREVIEW</span>
           <div className="flex gap-2">
@@ -177,16 +195,15 @@ export default function EmailGeneratorPage() {
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   
-                  {/* PDF Download Button */}
+                  {/* PDF Download Trigger */}
                   <button 
-                    onClick={handleDownloadPDF} 
+                    onClick={() => handleDownloadPDF()} 
                     className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
                     title="Download PDF"
                   >
                     <Download className="w-4 h-4" />
                   </button>
 
-                  {/* Copy Button */}
                   <button 
                     onClick={handleCopy}
                     className={cn(
@@ -201,30 +218,28 @@ export default function EmailGeneratorPage() {
           </div>
         </div>
 
-        {/* --- CONTENT AREA (Email is here) --- */}
+        {/* --- CONTENT AREA --- */}
         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar border-t-3 border-white/15">
           {generatedEmail ? (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-white/2 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+              <div className="bg-white/5 border border-white/10 rounded-xl shadow-2xl overflow-hidden">
                  
-                 {/* PDF PRINTABLE AREA 
-                     We use inline styles here to prevent the "lab color" error 
+                 {/* 👇 3. PRINTABLE AREA 
+                    We set background to WHITE and text to BLACK explicitly.
+                    This ensures the PDF looks like a real document, not a dark mode screenshot.
                  */}
                  <div 
                    ref={contentRef} 
                    style={{ 
-                     color: "#A6A4A4",        // Pure Black Text
-                     backgroundColor: "#121212", // Pure White Background
-                     padding: "40px",         // Print Padding
-                     fontFamily: "sans-serif" 
+                     color: "#000000",           // Force Black Text for Print
+                     backgroundColor: "#ffffff", // Force White Paper for Print
+                     padding: "40px",         
+                     fontFamily: "Arial, sans-serif",
+                     whiteSpace: "pre-wrap",
+                     lineHeight: "1.6"
                    }}
                  >
-                   <pre 
-                     className="whitespace-pre-wrap leading-relaxed" 
-                     style={{ fontFamily: "inherit" }}
-                   >
-                     {generatedEmail}
-                   </pre>
+                   {generatedEmail}
                  </div>
 
               </div>

@@ -2,17 +2,20 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Send, Bot, User, Loader2, Sparkles, Check, Copy } from "lucide-react"; // Added Check and Copy
+import { useRouter } from "next/navigation"; // 1. Import Router
+import { Send, Bot, User, Loader2, Sparkles, Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
+import { toast } from "sonner"; // 2. Import Toast
+import { ProModal } from "@/components/pro-modal"; // 3. Import Pro Modal
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-// Separate component for the Code Block to handle the "Copied" state individually
+// Code Block Component
 const CodeBlock = ({ children, ...props }: any) => {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLPreElement>(null);
@@ -50,10 +53,14 @@ const CodeBlock = ({ children, ...props }: any) => {
 };
 
 export default function AssistantPage() {
+  const router = useRouter(); // Initialize Router
   const { user } = useUser();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Modal State
+  const [proModalOpen, setProModalOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -87,9 +94,19 @@ export default function AssistantPage() {
       const response = await axios.post("/api/conversation", {
         messages: newMessages,
       });
+      
       setMessages((current) => [...current, response.data]);
-    } catch (error) {
+      router.refresh(); // Refresh credits in sidebar
+
+    } catch (error: any) {
       console.log(error);
+      
+      // 👇 CHECK FOR 403
+      if (error?.response?.status === 403) {
+        setProModalOpen(true);
+      } else {
+        toast.error("Something went wrong.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -97,6 +114,13 @@ export default function AssistantPage() {
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col max-w-4xl mx-auto">
+      
+      {/* 👇 ADD PRO MODAL */}
+      <ProModal 
+        isOpen={proModalOpen} 
+        onClose={() => setProModalOpen(false)} 
+      />
+
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400">
@@ -123,13 +147,9 @@ export default function AssistantPage() {
             key={i}
             className={cn(
               "flex gap-3 md:gap-4 w-full p-3 md:p-4 rounded-xl text-sm",
-              // RESPONSIVE FIX START
-              // Mobile: max-w-[85%] (wider bubbles)
-              // Desktop (md): max-w-[60%] (standard readable width)
               msg.role === "user"
                 ? "bg-white/10 border border-white/15 ml-auto max-w-[85%] md:max-w-[60%]"
                 : "bg-indigo-500/10 border border-indigo-500/50 max-w-[45%] md:max-w-[80%]"
-              // RESPONSIVE FIX END
             )}
           >
             <div className="shrink-0">
@@ -148,7 +168,6 @@ export default function AssistantPage() {
               )}
             </div>
 
-            {/* Added min-w-0 to prevent flex child overflow issues on small screens */}
             <div className="overflow-hidden leading-7 w-full text-white/90 min-w-0">
               <ReactMarkdown
                 components={{
@@ -170,7 +189,6 @@ export default function AssistantPage() {
         ))}
 
         {isLoading && (
-          // Responsive max-width for loading bubble as well
           <div className="flex gap-4 w-full p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 max-w-[85%] md:max-w-[60%]">
             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center">
               <Bot className="w-5 h-5 text-white" />

@@ -2,32 +2,43 @@
 
 import React, { useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation"; // Import Router
 import { Hash, Instagram, Linkedin, Twitter, Copy, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner"; // Import Toast
+import { ProModal } from "@/components/pro-modal"; // Import Pro Modal
 
 export default function CaptionGeneratorPage() {
+  const router = useRouter(); // Initialize Router
   const [isGenerating, setIsGenerating] = useState(false);
   const [captions, setCaptions] = useState<string[]>([]);
   const [platform, setPlatform] = useState("Instagram");
   const [description, setDescription] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [proModalOpen, setProModalOpen] = useState(false); // Modal State
 
   const handleGenerate = async () => {
     try {
       setIsGenerating(true);
-      setCaptions([]); // Clear previous results
+      setCaptions([]); 
 
       const response = await axios.post("/api/caption", {
         platform,
         description
       });
 
-      // The API returns an Array of strings
       setCaptions(response.data);
+      router.refresh(); // Refresh Credits
 
-    } catch (error) {
+    } catch (error: any) {
       console.log(error);
-      alert("Something went wrong. Please try again.");
+      
+      // 👇 CHECK FOR 403
+      if (error?.response?.status === 403) {
+        setProModalOpen(true);
+      } else {
+        toast.error("Something went wrong. Please try again.");
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -35,7 +46,6 @@ export default function CaptionGeneratorPage() {
 
   // --- MOBILE SAFE COPY FUNCTION ---
   const handleCopy = async (text: string, index: number) => {
-    // 1. Try Modern API (HTTPS / Desktop)
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(text);
@@ -47,7 +57,6 @@ export default function CaptionGeneratorPage() {
       }
     }
 
-    // 2. Fallback for Mobile/HTTP
     try {
       const textArea = document.createElement("textarea");
       textArea.value = text;
@@ -62,13 +71,19 @@ export default function CaptionGeneratorPage() {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch (err) {
-      alert("Copy failed manually.");
+      toast.error("Copy failed manually.");
     }
   };
 
   return (
     <div className="max-w-5xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-8">
       
+      {/* 👇 ADD PRO MODAL */}
+      <ProModal 
+        isOpen={proModalOpen} 
+        onClose={() => setProModalOpen(false)} 
+      />
+
       {/* LEFT: Input Configuration */}
       <div className="w-full md:w-1/3 space-y-6">
         <div className="bg-white/5 border-3 border-white/10 rounded-2xl p-6 space-y-6 shadow-xl">

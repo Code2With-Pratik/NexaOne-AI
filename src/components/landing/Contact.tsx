@@ -1,9 +1,31 @@
 "use client";
 
-import React from "react";
-import { Mail, MapPin, Phone, Send } from "lucide-react";
+import React, { useState } from "react";
+import { Mail, MapPin, Send, Loader2, CheckCircle } from "lucide-react";
+import { submitContactForm } from "@/actions/shared";
+import { toast } from "sonner";
 
 export const Contact = () => {
+  const [pending, setPending] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (formData: FormData) => {
+    setPending(true);
+    try {
+      const result = await submitContactForm(formData);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setSuccess(true);
+        toast.success("Message sent to our team!");
+      }
+    } catch (error) {
+      toast.error("Something went wrong.");
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <section id="contact" className="py-32 px-6 bg-transparent text-white relative overflow-hidden">
       {/* Background Gradients */}
@@ -48,33 +70,42 @@ export const Contact = () => {
         </div>
 
         {/* Right: Form */}
-        <div className="p-8 rounded-xl bg-transparent/5 border border-white/25 backdrop-blur-md shadow-2xl">
-          <form className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-white/50">First Name</label>
-                <input type="text" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="John" />
+        <div className="p-8 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md shadow-2xl">
+          {success ? (
+            <div className="h-full flex flex-col items-center justify-center py-12 space-y-4">
+               <CheckCircle className="w-16 h-16 text-green-500" />
+               <h3 className="text-2xl font-bold">Message Sent!</h3>
+               <p className="text-white/50">We will get back to you shortly.</p>
+               <button onClick={() => setSuccess(false)} className="text-indigo-400 hover:underline">Send another</button>
+            </div>
+          ) : (
+            <form action={handleSubmit} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wider text-white/50">First Name</label>
+                  <input name="firstName" required type="text" className="w-full bg-black/20 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors text-white" placeholder="John" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wider text-white/50">Last Name</label>
+                  <input name="lastName" required type="text" className="w-full bg-black/20 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors text-white" placeholder="Doe" />
+                </div>
               </div>
+
               <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-white/50">Last Name</label>
-                <input type="text" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Doe" />
+                <label className="text-xs uppercase tracking-wider text-white/50">Email</label>
+                <input name="email" required type="email" className="w-full bg-black/20 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors text-white" placeholder="john@company.com" />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wider text-white/50">Email</label>
-              <input type="email" className="w-full bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors" placeholder="john@company.com" />
-            </div>
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-white/50">Message</label>
+                <textarea name="message" required className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none text-white" placeholder="Tell us about your project..." />
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wider text-white/50">Message</label>
-              <textarea className="w-full h-32 bg-transparent/40 border border-white/30 rounded-xl p-3 focus:outline-none focus:border-indigo-500 transition-colors resize-none" placeholder="Tell us about your project..." />
-            </div>
-
-            <button className="w-full py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2">
-              Send Message <Send className="w-4 h-4" />
-            </button>
-          </form>
+              <button disabled={pending} type="submit" className="w-full py-4 rounded-xl bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                {pending ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send Message <Send className="w-4 h-4" /></>}
+              </button>
+            </form>
+          )}
         </div>
 
       </div>

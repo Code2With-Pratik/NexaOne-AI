@@ -3,67 +3,168 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // or "mysql" depending on your setup
 }
 
+// --- ENUMS ---
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum TicketStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  REJECTED
+}
+
+// --- MAIN USER MODEL ---
 model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique
-  name      String
-  email     String   @unique
-  image     String?
-  createdAt DateTime @default(now())
-  
-  // New Fields for WhatsApp-like features
-  pinnedChatIds String[] @default([]) 
-  mutedChatIds  String[] @default([])
+  id            String    @id @default(uuid())
+  clerkId       String    @unique
+  name          String
+  email         String    @unique
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt @default(now())
 
-  sentMessages     Message[] @relation("Sender")
-  receivedMessages Message[] @relation("Receiver")
+  // 1. ADMIN & BILLING
+  role          UserRole  @default(USER)
+  creditBalance Int       @default(25) // 👈 Standard start: 25 Credits
+  isBlocked     Boolean   @default(false)
 
-  initiatedCalls CallLog[] @relation("InitiatedCalls")
-  receivedCalls  CallLog[] @relation("ReceivedCalls")
+  // 2. WHATSAPP-LIKE FIELDS
+  pinnedChatIds String[]  @default([])
+  mutedChatIds  String[]  @default([])
+
+  // 3. RELATIONS (Chat & Calls)
+  sentMessages      Message[] @relation("Sender")
+  receivedMessages  Message[] @relation("Receiver")
+  initiatedCalls    CallLog[] @relation("InitiatedCalls")
+  receivedCalls     CallLog[] @relation("ReceivedCalls")
+
+  // 4. RELATIONS (Admin/AI Features)
+  history           History[]
+  supportTickets    SupportTicket[]
+  transactions      Transaction[]
+  notifications     Notification[]
+  testimonials      Testimonial[]
 }
 
-model Message {
-  id         String   @id @default(uuid())
-  content    String
-  type       String
-  
-  senderId   String
-  receiverId String
+// --- SYSTEM SETTINGS (NEW) ---
+model SystemSettings {
+  id              String  @id @default("settings") // Ensures only one row exists usually
+  maintenanceMode Boolean @default(false)
+}
 
+// --- CHAT & CALL MODELS ---
+model Message {
+  id           String   @id @default(uuid())
+  content      String
+  type         String   // "text", "image", "audio"
+  
+  senderId     String
+  receiverId   String
   deletedByIds String[] @default([])
   
-  sender     User     @relation("Sender", fields: [senderId], references: [clerkId])
-  receiver   User     @relation("Receiver", fields: [receiverId], references: [clerkId])
+  sender       User     @relation("Sender", fields: [senderId], references: [clerkId], onDelete: Cascade)
+  receiver     User     @relation("Receiver", fields: [receiverId], references: [clerkId], onDelete: Cascade)
   
-  createdAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
 }
 
 model CallLog {
-  id        String   @id @default(uuid())
+  id          String    @id @default(uuid())
   initiatorId String
-  receiverId String? // Nullable for group calls
-  type      String   // "AUDIO" | "VIDEO" | "GROUP"
-  status    String   // "MISSED" | "COMPLETED"
-  startedAt DateTime @default(now())
-  endedAt   DateTime?
+  receiverId  String?   // Nullable for group calls
+  type        String    // "AUDIO" | "VIDEO" | "GROUP"
+  status      String    // "MISSED" | "COMPLETED"
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
 
-  initiator User @relation("InitiatedCalls", fields: [initiatorId], references: [clerkId])
-  receiver  User? @relation("ReceivedCalls", fields: [receiverId], references: [clerkId])
+  initiator   User      @relation("InitiatedCalls", fields: [initiatorId], references: [clerkId], onDelete: Cascade)
+  receiver    User?     @relation("ReceivedCalls", fields: [receiverId], references: [clerkId], onDelete: Cascade)
 
   @@index([initiatorId])
   @@index([receiverId])
 }
 
-model Testimonial {
+// --- AI & ADMIN MODELS ---
+
+// 1. AI HISTORY
+model History {
   id        String   @id @default(cuid())
   userId    String
-  name      String
-  avatar    String?  // To show their profile pic on the landing page
-  rating    Int      // 1-5 Stars
-  message   String   @db.Text
-  isPublic  Boolean  @default(true) // Set to false if you want to moderate them first
+  tool      String   // e.g., "Image Generator"
+  query     String   // Input
+  result    String   // Output
+  
   createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  @@index([userId])
+}
+
+// 2. SUPPORT TICKETS
+model SupportTicket {
+  id          String       @id @default(cuid())
+  userId      String
+  subject     String
+  message     String       @db.Text
+  status      TicketStatus @default(PENDING)
+  adminReply  String?      @db.Text
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user        User         @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  @@index([userId])
+}
+
+// 3. TRANSACTIONS
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  amount    Int      // In cents
+  credits   Int      
+  status    String   // "SUCCESS", "FAILED"
+  stripeId  String?
+  
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+}
+
+// 4. NOTIFICATIONS
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+  @@index([userId])
+}
+
+// 5. TESTIMONIALS (Updated)
+model Testimonial {
+  id        String   @id @default(cuid())
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
+
+  name      String
+  avatar    String?
+  rating    Int
+  message   String   @db.Text
+  
+  isPublic  Boolean  @default(false) // 👈 Default: False (Must be approved by Admin)
+   
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

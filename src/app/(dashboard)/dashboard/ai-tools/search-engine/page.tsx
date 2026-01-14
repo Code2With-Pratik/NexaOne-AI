@@ -2,8 +2,11 @@
 
 import React, { useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation"; // Import Router
 import { Search, Globe, Image as ImageIcon, Video, Newspaper, Mic, Loader2, ArrowRight, ChevronRight, ChevronLeft, Sparkles, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner"; // Import Toast
+import { ProModal } from "@/components/pro-modal"; // Import Pro Modal
 
 // Types for Voice Recognition
 declare global {
@@ -15,17 +18,21 @@ declare global {
 type TabType = "search" | "images" | "videos" | "news";
 
 export default function SearchEnginePage() {
+  const router = useRouter(); // Initialize Router
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("search");
   const [results, setResults] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [isListening, setIsListening] = useState(false);
+  
+  // Modal State
+  const [proModalOpen, setProModalOpen] = useState(false);
 
   // --- VOICE SEARCH ---
   const handleVoiceSearch = () => {
     if (!("webkitSpeechRecognition" in window)) {
-      alert("Voice search is not supported in this browser.");
+      toast.error("Voice search is not supported in this browser.");
       return;
     }
     const recognition = new window.webkitSpeechRecognition();
@@ -57,9 +64,17 @@ export default function SearchEnginePage() {
 
       setResults(response.data);
       setPage(pageNum);
-    } catch (error) {
+      router.refresh(); // Refresh Credits
+
+    } catch (error: any) {
       console.log(error);
-      alert("Search failed.");
+      
+      // 👇 CHECK FOR 403
+      if (error?.response?.status === 403) {
+        setProModalOpen(true);
+      } else {
+        toast.error("Search failed.");
+      }
     } finally {
       setIsSearching(false);
     }
@@ -84,6 +99,12 @@ export default function SearchEnginePage() {
   return (
     <div className="w-full h-full flex flex-col gap-6 px-4 md:px-8 py-4 md:py-0 overflow-hidden">
       
+      {/* 👇 ADD PRO MODAL */}
+      <ProModal 
+        isOpen={proModalOpen} 
+        onClose={() => setProModalOpen(false)} 
+      />
+
       {/* --- HEADER SECTION --- */}
       <div className="w-full max-w-4xl mx-auto space-y-6 shrink-0 z-10">
         <div className="text-center space-y-2 mt-2 md:mt-0">
@@ -168,7 +189,7 @@ export default function SearchEnginePage() {
            {activeTab === "search" && results && (
               <div className="space-y-6 md:space-y-8 w-full max-w-4xl mx-auto">
                  
-                 {/* --- NEW: AI OVERVIEW SECTION --- */}
+                 {/* AI OVERVIEW SECTION */}
                  {results.aiOverview && (
                    <div className="relative overflow-hidden rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                       {/* Gradient Glow */}

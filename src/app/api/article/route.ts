@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { checkApiLimit, deductCredits } from "@/lib/api-limit";
+import { db } from "@/lib/db";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -14,7 +16,12 @@ export async function POST(req: Request) {
     if (!process.env.GROQ_API_KEY) return new NextResponse("API Key Missing", { status: 500 });
     if (!topic) return new NextResponse("Topic is required", { status: 400 });
 
-    // Use "llama3-8b-8192" (Fast & Efficient) or "llama3-70b-8192" (Smarter)
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
+    }
+
     const completion = await groq.chat.completions.create({
       messages: [
         {
@@ -38,13 +45,25 @@ export async function POST(req: Request) {
           Do not say "Here is the article". Just start writing.`
         }
       ],
-    //   model: "llama3-70b-8192", // The smart model (GPT-4 class)
-      model: "openai/gpt-oss-20b", // The smart model (GPT-4 class)
+      model: "openai/gpt-oss-20b", 
       temperature: 0.7,
       max_tokens: 2000,
     });
 
     const text = completion.choices[0]?.message?.content || "";
+
+    // 2. DEDUCT CREDITS (Cost 2 because it's long-form content)
+    await deductCredits(2);
+
+    // 3. SAVE HISTORY
+    await db.history.create({
+      data: {
+        userId,
+        tool: "Article Writer",
+        query: topic,
+        result: text.substring(0, 1000) // Truncate output for DB if excessively long
+      }
+    });
 
     return NextResponse.json(text);
 

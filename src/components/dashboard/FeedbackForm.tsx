@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { Star, Send, Loader2, CheckCircle } from "lucide-react";
-import axios from "axios";
 import { cn } from "@/lib/utils";
+import { submitFeedback } from "@/actions/shared"; // Import Action
+import { toast } from "sonner";
 
 export default function FeedbackForm() {
   const [rating, setRating] = useState(0);
@@ -17,21 +18,21 @@ export default function FeedbackForm() {
 
     setLoading(true);
     try {
-      await axios.post("/api/feedback", { rating, message });
+      await submitFeedback(rating, message);
       setSent(true);
       setRating(0);
       setMessage("");
-      // Reset success message after 3 seconds
+      toast.success("Feedback submitted!");
       setTimeout(() => setSent(false), 3000);
     } catch (error) {
-      console.error("Feedback error", error);
+      toast.error("Failed to submit feedback");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md">
+    <div className="w-full bg-[#111827] border border-white/10 rounded-2xl p-6 shadow-xl h-full">
       <h3 className="text-xl font-bold text-white mb-2">Share your experience</h3>
       <p className="text-white/50 text-sm mb-6">
         Your feedback helps us improve. Rated comments will be featured on our homepage!
@@ -45,7 +46,6 @@ export default function FeedbackForm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          
           {/* Star Rating */}
           <div className="flex gap-2 justify-center py-2">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -65,7 +65,6 @@ export default function FeedbackForm() {
             ))}
           </div>
 
-          {/* Message Area */}
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -73,7 +72,6 @@ export default function FeedbackForm() {
             className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500 resize-none transition-all"
           />
 
-          {/* Submit Button */}
           <button
             disabled={loading || rating === 0 || !message.trim()}
             className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-white/10 disabled:text-white/30 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20"

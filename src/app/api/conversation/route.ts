@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { checkApiLimit, deductCredits } from "@/lib/api-limit"; // 👈 IMPORT
+import { db } from "@/lib/db"; // 👈 IMPORT
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 
@@ -22,11 +24,12 @@ export async function POST(req: Request) {
       return new NextResponse("Messages are required", { status: 400 });
     }
 
-    // UPDATED MODEL NAME VVV
-    // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    // Use the specific version tag which is more reliable
-    // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-    // Use the specific version number (Most reliable)
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     const lastMessage = messages[messages.length - 1];
@@ -35,6 +38,20 @@ export async function POST(req: Request) {
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+
+    // 2. DEDUCT CREDITS (1 Credit)
+    await deductCredits(1);
+
+    // 3. SAVE HISTORY
+    // We only save the USER's last prompt and the AI's response
+    await db.history.create({
+      data: {
+        userId,
+        tool: "AI Assistant",
+        query: prompt.substring(0, 200), // Truncate query if too long
+        result: text
+      }
+    });
 
     return NextResponse.json({
       role: "assistant", 

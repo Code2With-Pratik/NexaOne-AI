@@ -1,67 +1,64 @@
-"use client";
-
 import React from "react";
-import { Sidebar } from "@/components/dashboard/Sidebar";
-import { useAppStore } from "@/lib/store";
-import { cn } from "@/lib/utils";
-import { Menu } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
-import { StarBackground } from "@/components/ui/StarBackground"; // <--- 1. IMPORT THIS
+import DashboardClient from "@/components/dashboard/DashboardClient";
+import { getCreditBalance } from "@/lib/api-limit";
+import { db } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const { isSidebarOpen, toggleSidebar } = useAppStore();
+export const dynamic = "force-dynamic";
+
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { userId } = await auth();
+  if (!userId) return redirect("/");
+
+  // 1. Fetch User & Settings Parallelly for speed
+  const [user, settings] = await Promise.all([
+    db.user.findUnique({ where: { clerkId: userId } }),
+    db.systemSettings.findUnique({ where: { id: "settings" } })
+  ]);
+
+  // 2. 🛑 BANNED USER CHECK
+  if (user?.isBlocked) {
+    return (
+        <div className="h-screen flex flex-col items-center justify-center bg-black text-white p-4 text-center">
+            <h1 className="text-4xl font-bold text-red-500 mb-4">Account Suspended</h1>
+            <p className="text-white/60">Your account has been banned due to policy violations.</p>
+            <p className="text-white/40 mt-2">Contact support if you think this is a mistake.</p>
+        </div>
+    );
+  }
+
+  // 3. 🛠️ MAINTENANCE MODE CHECK
+  // If Maintenance is ON, and user is NOT Admin -> Block access
+  const isMaintenanceMode = settings?.maintenanceMode || false;
+  const isUserAdmin = user?.role === "ADMIN";
+
+  if (isMaintenanceMode && !isUserAdmin) {
+     return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0b0f19] text-white p-4 relative overflow-hidden">
+             <div className="absolute inset-0 bg-indigo-500/10 blur-[100px]" />
+             <div className="z-10 text-center space-y-6 max-w-lg">
+                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                    <span className="text-4xl">🚧</span>
+                </div>
+                <h1 className="text-4xl font-bold">System Under Maintenance</h1>
+                <p className="text-lg text-white/60">
+                    NexaOne AI is currently being upgraded. We will be back online in 24-48 hours.
+                </p>
+                <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+                    <p className="text-sm font-mono text-indigo-300">Status: Deploying Pro Features...</p>
+                </div>
+             </div>
+        </div>
+     );
+  }
+
+  // 4. Normal Loading: Fetch Credits
+  const creditBalance = await getCreditBalance();
 
   return (
-    // 2. UPDATED: Removed "bg-black" -> Changed to "bg-transparent" or the stars will be hidden!
-    <div className="flex h-screen w-full bg-transparent text-white overflow-hidden relative">
-      
-      {/* 3. INSERT THE BACKGROUND HERE */}
-      <StarBackground />
-
-      {/* 4. Sidebar Component */}
-      <Sidebar />
-
-      {/* 5. Main Content Area */}
-      <div 
-        className={cn(
-          // Added z-10 to ensure content sits above the stars
-          "flex-1 flex flex-col h-full transition-all duration-300 relative z-10",
-          isSidebarOpen ? "md:ml-72" : "md:ml-20"
-        )}
-      >
-        {/* Top Header */}
-        <header className="h-16 shrink-0 border-b border-white/10 flex items-center justify-between px-6 bg-black/10 backdrop-blur-md sticky top-0 z-30">
-          <button 
-            onClick={toggleSidebar}
-            className="p-2 -ml-5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-
-          <div className="flex items-center gap-4">
-              {/* Credit Counter */}
-              <div className="px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-mono">
-                120 Credits
-              </div>
-              
-              {/* CLERK USER PROFILE BUTTON */}
-              <div className="flex items-center justify-center">
-                 <UserButton afterSignOutUrl="/" /> 
-              </div>
-          </div>
-        </header>
-
-        {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-transparent scroll-smooth pb-20">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+    <DashboardClient creditBalance={creditBalance} isAdmin={isUserAdmin}>
+      {children}
+    </DashboardClient>
   );
 }

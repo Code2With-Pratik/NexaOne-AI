@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { checkApiLimit, deductCredits } from "@/lib/api-limit";
+import { db } from "@/lib/db";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -12,6 +14,12 @@ export async function POST(req: Request) {
 
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
     if (!process.env.GROQ_API_KEY) return new NextResponse("API Key Missing", { status: 500 });
+
+    // 1. CHECK CREDITS
+    const hasCredits = await checkApiLimit();
+    if (!hasCredits) {
+      return new NextResponse("Free trial has expired. Please upgrade.", { status: 403 });
+    }
 
     const systemPrompt = `You are a social media expert. 
     Generate 3 distinct caption options for ${platform}.
@@ -36,19 +44,27 @@ export async function POST(req: Request) {
     });
 
     let content = completion.choices[0]?.message?.content || "[]";
-
-    // Clean up if AI adds Markdown code blocks (```json ... ```)
     content = content.replace(/```json/g, "").replace(/```/g, "").trim();
 
-    // Parse the string into a real array
     let captionsArray = [];
     try {
       captionsArray = JSON.parse(content);
     } catch (e) {
-      console.error("JSON Parse Error", e);
-      // Fallback if JSON fails: just return the raw text in an array
       captionsArray = [content];
     }
+
+    // 2. DEDUCT CREDITS
+    await deductCredits(1);
+
+    // 3. SAVE HISTORY
+    await db.history.create({
+      data: {
+        userId,
+        tool: "Caption Generator",
+        query: description,
+        result: captionsArray.join("\n\n") // Store all captions separated by newlines
+      }
+    });
 
     return NextResponse.json(captionsArray);
 

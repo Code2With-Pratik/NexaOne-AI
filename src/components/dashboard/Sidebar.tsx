@@ -4,11 +4,10 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { useClerk } from "@clerk/nextjs"; // <--- 1. IMPORT CLERK HOOK
+import { useClerk } from "@clerk/nextjs";
 import { 
   LayoutDashboard, 
   MessageSquare, 
-  Video, 
   Image as ImageIcon, 
   PenTool,
   Phone, 
@@ -21,19 +20,15 @@ import {
   ChevronRight,
   Type,
   LogOut,
-  Sparkles
+  Sparkles,
+  X,
+  ShieldCheck // 👈 Import Admin Icon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SidebarItem = {
-  name: string;
-  icon: React.ElementType;
-  href?: string;
-  color: string;
-  subItems?: { name: string; href: string; icon: React.ElementType; color: string }[];
-};
-
-const sidebarItems: SidebarItem[] = [
+// ... (Keep your sidebarItems array exactly as it is) ...
+const sidebarItems = [
+  // ... your existing items ...
   { 
     name: "Dashboard", 
     href: "/dashboard", 
@@ -60,7 +55,7 @@ const sidebarItems: SidebarItem[] = [
     subItems: [
       { name: "Live Chat", href: "/dashboard/chat", icon: MessageSquare, color: "text-emerald-400" },
       { name: "Group Meeting", href: "/dashboard/meeting", icon: Users, color: "text-yellow-400" },
-      { name: "Call Logs", href: "/dashboard/call-logs",icon: Phone, color: "text-red-500" }, // Optional: choose a color
+      { name: "Call Logs", href: "/dashboard/call-logs",icon: Phone, color: "text-red-500" },
     ]
   },
   { 
@@ -71,135 +66,179 @@ const sidebarItems: SidebarItem[] = [
   },
 ];
 
-export const Sidebar = () => {
+// 👇 Update Props Interface
+interface SidebarProps {
+  apiLimitCount?: number;
+  isPro?: boolean;
+  isAdmin?: boolean; // 👈 Add this
+}
+
+export const Sidebar = ({ 
+  apiLimitCount = 0, 
+  isPro = false,
+  isAdmin = false // 👈 Default to false
+}: SidebarProps) => {
   const pathname = usePathname();
-  const { isSidebarOpen } = useAppStore();
+  const { isSidebarOpen } = useAppStore(); 
   const [openMenus, setOpenMenus] = useState<string[]>([]);
-  
-  // 2. GET SIGN OUT FUNCTION
   const { signOut } = useClerk();
 
+  // ... (Keep your toggleMenu and handleLinkClick functions here) ...
   const toggleMenu = (name: string) => {
-    if (!isSidebarOpen) return;
+    if (!isSidebarOpen) {
+       useAppStore.setState({ isSidebarOpen: true });
+       setOpenMenus([name]);
+       return;
+    }
     setOpenMenus((prev) => 
-      prev.includes(name) 
-        ? prev.filter((item) => item !== name)
-        : [...prev, name]
+      prev.includes(name) ? prev.filter((item) => item !== name) : [...prev, name]
     );
   };
 
+  const handleLinkClick = () => {
+    if (window.innerWidth < 768) { 
+      useAppStore.setState({ isSidebarOpen: false });
+    }
+  };
+
   const isActive = (href: string) => pathname === href;
-  const isChildActive = (item: SidebarItem) => item.subItems?.some(sub => pathname === sub.href);
+  const isChildActive = (item: any) => item.subItems?.some((sub: any) => pathname === sub.href);
 
   return (
-    <aside 
-      className={cn(
-        "h-screen bg-black/20 backdrop-blur-sm border-r border-white/10 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out",
-        isSidebarOpen 
-          ? "w-68 translate-x-0" 
-          : "w-64 -translate-x-full md:translate-x-0 md:w-20"
+    <>
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => useAppStore.setState({ isSidebarOpen: false })}
+          className="md:hidden fixed inset-0 bg-black/60 z-30 backdrop-blur-sm transition-opacity"
+        />
       )}
-    >
-      
-      {/* Brand Logo */}
-      <div className={cn("h-16 flex items-center border-b border-white/10 transition-all", isSidebarOpen ? "px-6" : "justify-center px-0")}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-          <a href="http://localhost:3000/">
-            <span className="font-bold text-white">
-              <img src="favicon.ico" alt="Brand icon" />
-            </span>
-          </a>
-        </div>
-        <span className={cn("font-bold text-lg text-white ml-1 transition-opacity duration-200", !isSidebarOpen && "hidden md:hidden opacity-0")}>
-          <a href="http://localhost:3000/">
-            NexaOne <span className="text-indigo-400">AI</span>
-          </a>
-        </span>
-      </div>
 
-      {/* Navigation Items */}
-      <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1 custom-scrollbar">
-        {sidebarItems.map((item) => (
-          <div key={item.name}>
-            {item.subItems ? (
-              <>
-                <button
-                  onClick={() => toggleMenu(item.name)}
+      {/* Main Sidebar */}
+      <aside 
+        className={cn(
+          "h-screen bg-[#111827] border-r border-white/10 flex flex-col fixed left-0 top-0 z-40 transition-all duration-300 ease-in-out",
+          isSidebarOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0 md:w-20"
+        )}
+      >
+        
+        {/* Brand Logo & Close Button */}
+        <div className={cn("h-16 flex items-center border-b border-white/10 transition-all shrink-0", isSidebarOpen ? "px-6 justify-between" : "justify-center px-0")}>
+          <div className="flex items-center overflow-hidden">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-tr from-indigo-500 to-purple-500">
+               <span className="font-bold text-white">N</span>
+            </div>
+            <span className={cn("font-bold text-lg text-white ml-3 whitespace-nowrap transition-opacity duration-200", !isSidebarOpen && "hidden opacity-0")}>
+              NexaOne <span className="text-indigo-400">AI</span>
+            </span>
+          </div>
+          <button 
+            onClick={() => useAppStore.setState({ isSidebarOpen: false })}
+            className="md:hidden p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Navigation Items */}
+        <div className="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
+          
+          {/* 👇 ADMIN BUTTON (Only shows if isAdmin is true) */}
+          {isAdmin && (
+             <Link
+               href="/admin"
+               onClick={handleLinkClick}
+               className={cn(
+                 "flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-4 cursor-pointer border border-red-500/20 bg-red-500/10 hover:bg-red-500/20",
+                 !isSidebarOpen && "justify-center",
+               )}
+               title="Admin Console"
+             >
+               <ShieldCheck className="w-5 h-5 shrink-0 text-red-400" />
+               {isSidebarOpen && <span className="text-sm font-bold text-red-400 ml-3">Admin Console</span>}
+             </Link>
+          )}
+          {/* 👆 END ADMIN BUTTON */}
+
+          {sidebarItems.map((item) => (
+             <div key={item.name}>
+               {/* ... (Keep your existing mapping logic exactly the same) ... */}
+               {item.subItems ? (
+                <>
+                  <button
+                    onClick={() => toggleMenu(item.name)}
+                    className={cn(
+                      "w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer select-none",
+                      !isSidebarOpen && "justify-center", 
+                      isSidebarOpen && "justify-between",
+                      isChildActive(item) ? "bg-white/10 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                    )}
+                    title={!isSidebarOpen ? item.name : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isChildActive(item) ? "text-indigo-400" : item.color)} />
+                      {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
+                    </div>
+                    {isSidebarOpen && (
+                      openMenus.includes(item.name) ? <ChevronDown className="w-4 h-4 text-white/40" /> : <ChevronRight className="w-4 h-4 text-white/40" />
+                    )}
+                  </button>
+
+                  {/* Submenu */}
+                  {openMenus.includes(item.name) && isSidebarOpen && (
+                    <div className="ml-4 pl-4 border-l border-white/10 space-y-1 mb-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      {item.subItems.map((sub) => (
+                        <Link
+                          key={sub.name}
+                          href={sub.href}
+                          onClick={handleLinkClick}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all cursor-pointer",
+                            isActive(sub.href) ? "bg-indigo-600 text-white shadow-lg" : "text-white/50 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <sub.icon className={cn("w-4 h-4", isActive(sub.href) ? "text-white" : sub.color)} />
+                          {sub.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Link
+                  href={item.href!}
+                  onClick={handleLinkClick}
                   className={cn(
-                    "w-full flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer",
-                    !isSidebarOpen && "justify-center", 
-                    isSidebarOpen && "justify-between",
-                    isChildActive(item) ? "bg-white/5 text-white" : "text-white/60 hover:bg-white/5 hover:text-white"
+                    "flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer",
+                    !isSidebarOpen && "justify-center",
+                    isActive(item.href!) ? "bg-indigo-600 text-white shadow-lg" : "text-white/60 hover:bg-white/5 hover:text-white"
                   )}
                   title={!isSidebarOpen ? item.name : undefined}
                 >
-                  <div className="flex items-center gap-3">
-                    <item.icon className={cn("w-5 h-5 shrink-0", isChildActive(item) ? "text-indigo-400" : item.color)} />
-                    {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
-                  </div>
-                  {isSidebarOpen && (
-                    openMenus.includes(item.name) ? <ChevronDown className="w-4 h-4 text-white/40" /> : <ChevronRight className="w-4 h-4 text-white/40" />
-                  )}
-                </button>
+                  <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isActive(item.href!) ? "text-white" : item.color)} />
+                  {isSidebarOpen && <span className="text-sm font-medium ml-3">{item.name}</span>}
+                </Link>
+              )}
+             </div>
+          ))}
+        </div>
 
-                {openMenus.includes(item.name) && isSidebarOpen && (
-                  <div className="ml-4 pl-4 border-l border-white/10 space-y-1 mb-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {item.subItems.map((sub) => (
-                      <Link
-                        key={sub.name}
-                        href={sub.href}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all cursor-pointer",
-                          isActive(sub.href) ? "bg-indigo-600 text-white shadow-lg" : "text-white/50 hover:text-white hover:bg-white/5"
-                        )}
-                      >
-                        <sub.icon className={cn("w-4 h-4", isActive(sub.href) ? "text-white" : sub.color)} />
-                        {sub.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <Link
-                href={item.href!}
-                className={cn(
-                  "flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer",
-                  !isSidebarOpen && "justify-center",
-                  isActive(item.href!) ? "bg-indigo-600 text-white shadow-lg" : "text-white/60 hover:bg-white/5 hover:text-white"
-                )}
-                title={!isSidebarOpen ? item.name : undefined}
-              >
-                <item.icon className={cn("w-5 h-5 shrink-0", isActive(item.href!) ? "text-white" : item.color)} />
-                {isSidebarOpen && <span className="text-sm font-medium ml-3">{item.name}</span>}
-              </Link>
+        {/* Footer / Logout */}
+        <div className={cn("border-t border-white/10 transition-all shrink-0", isSidebarOpen ? "p-4" : "p-2")}>
+          <button 
+            onClick={() => signOut({ redirectUrl: '/' })}
+            className={cn(
+              "flex items-center w-full rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors group cursor-pointer",
+              isSidebarOpen ? "px-3 py-2.5 gap-3" : "justify-center py-3"
             )}
-          </div>
-        ))}
-      </div>
+            title="Sign Out"
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
+            {isSidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
+          </button>
+        </div>
 
-      {/* Footer / Logout */}
-      <div className={cn("border-t border-white/10 transition-all", isSidebarOpen ? "p-4" : "p-2")}>
-        <button 
-          // 3. ATTACH LOGOUT FUNCTIONALITY
-          onClick={() => signOut({ redirectUrl: '/' })}
-          className={cn(
-            "flex items-center w-full rounded-xl text-red-400 hover:bg-red-500/10 transition-colors group cursor-pointer",
-            isSidebarOpen ? "px-3 py-2.5 gap-3" : "justify-center py-3"
-          )}
-        >
-          <LogOut className="w-5 h-5 group-hover:text-red-500 shrink-0" />
-          {isSidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
-        </button>
-      </div>
-
-      <button
-        onClick={() => useAppStore.setState({ isSidebarOpen: false })}
-        className="absolute top-4 right-4 text-white rounded-full p-2 md:hidden"
-        aria-label="Close Sidebar"
-      >
-        ✕
-      </button>
-    </aside>
+      </aside>
+    </>
   );
 };
