@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ReplyDialog } from "../support/_components/reply-dialog"; // Reuse the reply component we made!
+import { ReplyDialog } from "../support/_components/reply-dialog";
+import { cn } from "@/lib/utils"; // 👈 This import was missing!
 
 export default async function AdminQueriesPage() {
   const queries = await db.supportTicket.findMany({
@@ -47,9 +48,10 @@ export default async function AdminQueriesPage() {
                 </td>
                 <td className="px-6 py-4">
                     <Badge className={cn(
-                        ticket.status === "RESOLVED" ? "bg-green-500/20 text-green-400" : 
-                        ticket.status === "REJECTED" ? "bg-red-500/20 text-red-400" : 
-                        "bg-yellow-500/20 text-yellow-400"
+                        "font-medium border-0", // Added base styles
+                        ticket.status === "RESOLVED" ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : 
+                        ticket.status === "REJECTED" ? "bg-red-500/20 text-red-400 hover:bg-red-500/30" : 
+                        "bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30"
                     )}>
                         {ticket.status}
                     </Badge>
