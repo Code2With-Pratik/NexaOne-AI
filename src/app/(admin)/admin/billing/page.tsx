@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { TableControls } from "@/components/admin/table-controls"; // 👈 Reuse
+import { TableControls } from "@/components/admin/table-controls";
+import { CreditCard, Calendar, CheckCircle, XCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
   const page = Number(params.page) || 1;
   const pageSize = 10;
 
-  // Search by Email only (usually sufficient for billing)
+  // Search by Email only
   const whereClause = query ? {
     user: { email: { contains: query, mode: "insensitive" as const } }
   } : {};
@@ -28,16 +29,17 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
   ]);
 
   return (
-    <div className="p-8 text-white space-y-6">
+    <div className="p-4 md:p-8 text-white space-y-6">
         <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold">Billing & Transactions</h1>
             <span className="text-sm text-white/50">Total: {total}</span>
         </div>
 
-        {/* 🔍 Add Controls */}
+        {/* 🔍 Search Controls */}
         <TableControls totalPages={Math.ceil(total / pageSize)} currentPage={page} placeholder="Search customer email..." />
 
-        <div className="border border-white/10 rounded-xl overflow-hidden bg-[#1f2937]">
+        {/* === DESKTOP TABLE VIEW (Hidden on Mobile) === */}
+        <div className="hidden md:block border border-white/10 rounded-xl overflow-hidden bg-[#1f2937]">
             <table className="w-full text-sm text-left">
                 <thead className="bg-[#111827] text-white/60 uppercase text-xs">
                     <tr>
@@ -50,7 +52,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                 </thead>
                 <tbody className="divide-y divide-white/10">
                     {transactions.map((tx) => (
-                        <tr key={tx.id} className="hover:bg-white/5">
+                        <tr key={tx.id} className="hover:bg-white/5 transition">
                             <td className="px-6 py-4 font-medium">{tx.user.email}</td>
                             <td className="px-6 py-4">
                                 <Badge variant="outline" className="border-indigo-500 text-indigo-400">
@@ -62,9 +64,13 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                             </td>
                             <td className="px-6 py-4">
                                 {tx.status === "SUCCESS" ? (
-                                    <span className="text-green-500 text-xs font-bold uppercase">Paid</span>
+                                    <span className="flex items-center gap-1 text-green-500 text-xs font-bold uppercase">
+                                        <CheckCircle className="w-3 h-3" /> Paid
+                                    </span>
                                 ) : (
-                                    <span className="text-red-500 text-xs font-bold uppercase">Failed</span>
+                                    <span className="flex items-center gap-1 text-red-500 text-xs font-bold uppercase">
+                                        <XCircle className="w-3 h-3" /> Failed
+                                    </span>
                                 )}
                             </td>
                             <td className="px-6 py-4 text-white/50 text-xs">
@@ -77,6 +83,46 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                     )}
                 </tbody>
             </table>
+        </div>
+
+        {/* === MOBILE CARD VIEW (Visible on Mobile Only) === */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+            {transactions.map((tx) => (
+                <div key={tx.id} className="bg-[#1f2937] p-4 rounded-xl border border-white/10 space-y-3">
+                    {/* Header: Email & Amount */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-white truncate max-w-[200px]">{tx.user.email}</span>
+                            <span className="text-xs text-white/40">{format(tx.createdAt, "MMM d, h:mm a")}</span>
+                        </div>
+                        <span className="text-lg font-bold text-green-400">
+                             ${(tx.amount / 100).toFixed(2)}
+                        </span>
+                    </div>
+
+                    {/* Details: Plan & Status */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <Badge variant="outline" className="border-indigo-500/30 text-indigo-300 bg-indigo-500/10 text-[10px]">
+                            {tx.credits > 50 ? "Ultra Plan" : "Pro Plan"}
+                        </Badge>
+                        
+                        {tx.status === "SUCCESS" ? (
+                            <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
+                                <CheckCircle className="w-3 h-3" /> PAID
+                            </span>
+                        ) : (
+                            <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                                <XCircle className="w-3 h-3" /> FAILED
+                            </span>
+                        )}
+                    </div>
+                </div>
+            ))}
+            {transactions.length === 0 && (
+                <div className="p-8 text-center text-white/50 bg-[#1f2937] rounded-xl border border-white/10">
+                    No transactions found.
+                </div>
+            )}
         </div>
     </div>
   );
