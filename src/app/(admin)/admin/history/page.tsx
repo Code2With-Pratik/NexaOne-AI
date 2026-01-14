@@ -10,7 +10,7 @@ export default async function AdminHistoryPage({ searchParams }: { searchParams:
   const params = await searchParams;
   const query = params.search || "";
   const page = Number(params.page) || 1;
-  const pageSize = 15;
+  const pageSize = 8;
 
   const whereClause = query ? {
     OR: [
