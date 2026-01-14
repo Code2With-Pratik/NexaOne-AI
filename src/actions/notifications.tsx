@@ -9,11 +9,17 @@ export async function getNotifications() {
   const { userId } = await auth();
   if (!userId) return [];
 
-  return await db.notification.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    take: 10 // Limit to recent 10
-  });
+  try {
+    const notifications = await db.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 10
+    });
+    return notifications;
+  } catch (error) {
+    console.error("Database Error:", error);
+    return []; // Return empty array instead of crashing
+  }
 }
 
 // 2. Mark Single as Read

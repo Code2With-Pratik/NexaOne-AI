@@ -144,6 +144,8 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   type      String   @default("INFO") // 👈 Added for visual distinction
+
+  link      String?
   
   createdAt DateTime @default(now())
   

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, MailOpen } from "lucide-react";
+import { Bell, MailOpen, ExternalLink } from "lucide-react"; // Added ExternalLink icon
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,27 +9,30 @@ import { getNotifications, markAllAsRead, markAsRead } from "@/actions/notificat
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation"; // 👈 Import Router
 
-// 👇 Updated Type to match your Schema exactly
+// Update Type Definition
 type Notification = {
   id: string;
   title: string;
   message: string;
   isRead: boolean;
   createdAt: Date;
-  // type: string; // Removed this since it's not in your DB
+  link?: string | null; // 👈 Add link property
 };
 
 export default function NotificationBell() {
+  const router = useRouter(); // 👈 Initialize Router
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch data
+  // ... (fetchData and markAllAsRead remain the same) ...
   const fetchData = async () => {
     try {
       const data = await getNotifications();
-      setNotifications(data);
+      // Ensure we explicitly cast or map if TS complains, but usually it infers correctly
+      setNotifications(data as Notification[]); 
     } catch (error) {
       console.error("Failed to fetch notifications");
     } finally {
@@ -43,17 +46,25 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Actions
   const handleMarkAllRead = async () => {
     setNotifications((prev) => prev.map(n => ({ ...n, isRead: true })));
     await markAllAsRead();
     toast.success("All cleared!");
   };
 
-  const handleItemClick = async (id: string) => {
-    // Optimistic update
-    setNotifications((prev) => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
-    await markAsRead(id);
+  // 👇 UPDATED CLICK HANDLER
+  const handleItemClick = async (notification: Notification) => {
+    // 1. Mark as read visually
+    setNotifications((prev) => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+    
+    // 2. Mark as read in DB (background)
+    markAsRead(notification.id);
+
+    // 3. Redirect if link exists
+    setIsOpen(false); // Close popover
+    if (notification.link) {
+        router.push(notification.link);
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -72,22 +83,15 @@ export default function NotificationBell() {
       </PopoverTrigger>
       
       <PopoverContent align="end" className="w-80 p-0 bg-[#1f2937] border-white/10 text-white shadow-xl rounded-xl">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
           <h4 className="font-semibold text-sm">Notifications</h4>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleMarkAllRead}
-              className="h-auto px-2 py-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
-            >
+            <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-auto px-2 py-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10">
               Mark all read
             </Button>
           )}
         </div>
 
-        {/* List */}
         <ScrollArea className="h-[300px]">
           {loading ? (
              <div className="p-4 text-center text-white/40 text-xs">Loading updates...</div>
@@ -101,21 +105,23 @@ export default function NotificationBell() {
                 {notifications.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => handleItemClick(item.id)}
+                    onClick={() => handleItemClick(item)} // 👈 Pass full item
                     className={cn(
-                      "w-full text-left px-4 py-3 hover:bg-white/5 transition flex items-start gap-3",
+                      "w-full text-left px-4 py-3 hover:bg-white/5 transition flex items-start gap-3 group",
                       !item.isRead ? "bg-indigo-500/5" : ""
                     )}
                   >
-                    <div className={cn(
-                      "mt-1 w-2 h-2 rounded-full shrink-0",
-                      !item.isRead ? "bg-indigo-500" : "bg-white/20"
-                    )} />
+                    <div className={cn("mt-1 w-2 h-2 rounded-full shrink-0", !item.isRead ? "bg-indigo-500" : "bg-white/20")} />
                     
                     <div className="flex-1 space-y-1">
-                      <p className={cn("text-sm leading-none", !item.isRead ? "font-semibold text-white" : "text-white/70")}>
-                        {item.title}
-                      </p>
+                      <div className="flex justify-between items-start">
+                          <p className={cn("text-sm leading-none", !item.isRead ? "font-semibold text-white" : "text-white/70")}>
+                            {item.title}
+                          </p>
+                          {/* Show tiny icon if link exists */}
+                          {item.link && <ExternalLink className="w-3 h-3 text-white/30 group-hover:text-indigo-400" />}
+                      </div>
+                      
                       <p className="text-xs text-white/50 line-clamp-2">
                         {item.message}
                       </p>

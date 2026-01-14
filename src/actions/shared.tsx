@@ -40,7 +40,7 @@ export async function submitContactForm(formData: FormData) {
     }
   });
 
-  // 🔔 2. NEW: Notify All Admins
+  // 🔔 2. NEW: Notify All Admins with REDIRECT LINK
   const admins = await db.user.findMany({ where: { role: "ADMIN" } });
 
   if (admins.length > 0) {
@@ -50,7 +50,9 @@ export async function submitContactForm(formData: FormData) {
           userId: admin.clerkId,
           title: "New Support Ticket",
           message: `${firstName} ${lastName} submitted a query: "${message.substring(0, 30)}..."`,
-          type: "INFO" // "INFO" matches your schema default
+          type: "INFO",
+          // 👇 Link to the queries page, pre-filtered by the user's email
+          link: `/admin/queries?search=${encodeURIComponent(email)}`
         }
       })
     ));
@@ -78,7 +80,7 @@ export async function submitFeedback(rating: number, message: string) {
     }
   });
 
-  // 🔔 2. NEW: Notify All Admins
+  // 🔔 2. NEW: Notify All Admins with REDIRECT LINK
   const admins = await db.user.findMany({ where: { role: "ADMIN" } });
 
   if (admins.length > 0) {
@@ -88,7 +90,9 @@ export async function submitFeedback(rating: number, message: string) {
           userId: admin.clerkId,
           title: "New Testimonial",
           message: `${user?.name || "A user"} rated us ${rating} stars! Review it in Settings.`,
-          type: "SUCCESS" // Use SUCCESS for positive vibes
+          type: "SUCCESS",
+          // 👇 Link directly to the settings page where approvals happen
+          link: "/admin/settings"
         }
       })
     ));
