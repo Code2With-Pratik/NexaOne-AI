@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { TableControls } from "@/components/admin/table-controls";
-import { CreditCard, Calendar, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                         <th className="px-6 py-4">Customer</th>
                         <th className="px-6 py-4">Plan</th>
                         <th className="px-6 py-4">Amount</th>
+                        <th className="px-6 py-4">Payment ID</th>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4">Date</th>
                     </tr>
@@ -56,11 +57,17 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                             <td className="px-6 py-4 font-medium">{tx.user.email}</td>
                             <td className="px-6 py-4">
                                 <Badge variant="outline" className="border-indigo-500 text-indigo-400">
-                                    {tx.credits > 50 ? "Ultra Plan" : "Pro Plan"}
+                                    {/* 👇 UPDATED: Use stored plan name directly */}
+                                    {tx.planName || "Unknown Plan"}
                                 </Badge>
                             </td>
                             <td className="px-6 py-4 font-bold text-green-400">
-                                ${(tx.amount / 100).toFixed(2)}
+                                {/* 👇 UPDATED: Format as INR (₹) */}
+                                ₹{(tx.amount / 100).toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 font-mono text-xs text-white/40">
+                                {/* 👇 NEW: Show Razorpay Payment ID */}
+                                {tx.razorpayPaymentId || "-"}
                             </td>
                             <td className="px-6 py-4">
                                 {tx.status === "SUCCESS" ? (
@@ -79,7 +86,7 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                         </tr>
                     ))}
                     {transactions.length === 0 && (
-                        <tr><td colSpan={5} className="p-8 text-center text-white/50">No transactions found.</td></tr>
+                        <tr><td colSpan={6} className="p-8 text-center text-white/50">No transactions found.</td></tr>
                     )}
                 </tbody>
             </table>
@@ -96,14 +103,15 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                             <span className="text-xs text-white/40">{format(tx.createdAt, "MMM d, h:mm a")}</span>
                         </div>
                         <span className="text-lg font-bold text-green-400">
-                             ${(tx.amount / 100).toFixed(2)}
+                             {/* 👇 UPDATED: INR Format */}
+                             ₹{(tx.amount / 100).toFixed(2)}
                         </span>
                     </div>
 
                     {/* Details: Plan & Status */}
                     <div className="flex items-center justify-between pt-2 border-t border-white/5">
                         <Badge variant="outline" className="border-indigo-500/30 text-indigo-300 bg-indigo-500/10 text-[10px]">
-                            {tx.credits > 50 ? "Ultra Plan" : "Pro Plan"}
+                            {tx.planName || "Unknown"}
                         </Badge>
                         
                         {tx.status === "SUCCESS" ? (
@@ -115,6 +123,10 @@ export default async function AdminBillingPage({ searchParams }: { searchParams:
                                 <XCircle className="w-3 h-3" /> FAILED
                             </span>
                         )}
+                    </div>
+                    {/* Tiny Payment ID for reference */}
+                    <div className="text-[10px] text-white/20 font-mono text-right">
+                        ID: {tx.razorpayPaymentId}
                     </div>
                 </div>
             ))}

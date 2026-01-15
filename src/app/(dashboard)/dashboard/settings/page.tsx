@@ -1,13 +1,14 @@
 import { db } from "@/lib/db";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { Zap, Calendar, Mail, User as UserIcon, CreditCard, ExternalLink } from "lucide-react";
 import { ProTipsCarousel } from "@/components/dashboard/ProTipsCarousel";
+import Link from "next/link";
 
 export default async function SettingsPage() {
   const { userId } = await auth();
@@ -15,18 +16,23 @@ export default async function SettingsPage() {
 
   if (!userId || !user) redirect("/sign-in");
 
-  // Fetch DB user for credits & member date
+  // Fetch DB user for credits & plan details
   const dbUser = await db.user.findUnique({
     where: { clerkId: userId }
   });
 
   if (!dbUser) return null;
 
-  // Logic to determine Plan Name based on credits (or your own logic)
-  const planName = dbUser.creditBalance > 1000 ? "Ultra Plan" : dbUser.creditBalance > 100 ? "Pro Plan" : "Free Plan";
-  const planColor = planName === "Ultra Plan" ? "text-purple-400 border-purple-500/50 bg-purple-500/10" : 
-                    planName === "Pro Plan" ? "text-indigo-400 border-indigo-500/50 bg-indigo-500/10" : 
-                    "text-gray-400 border-white/10 bg-white/5";
+  // Logic to determine Plan Name from DB (Default to "Free Tier")
+  const planName = dbUser.planName || "Free Tier";
+  
+  // Dynamic Styling based on Plan
+  let planColor = "text-gray-400 border-white/10 bg-white/5";
+  if (planName === "Ultra Plan") {
+      planColor = "text-purple-400 border-purple-500/50 bg-purple-500/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]";
+  } else if (planName === "Pro Plan") {
+      planColor = "text-indigo-400 border-indigo-500/50 bg-indigo-500/10 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
@@ -52,7 +58,7 @@ export default async function SettingsPage() {
             {/* User Info Row */}
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-white/10 shadow-lg">
-                <AvatarImage src={user.imageUrl} />
+                <AvatarImage src={user.imageUrl || ""} />
                 <AvatarFallback className="bg-indigo-600 text-white">{user.firstName?.[0]}</AvatarFallback>
               </Avatar>
               <div className="space-y-1">
@@ -71,7 +77,7 @@ export default async function SettingsPage() {
                         <Zap className="w-3 h-3 text-yellow-500" /> Credits
                     </div>
                     <div className="text-2xl font-mono font-bold text-white">
-                        {dbUser.creditBalance}
+                        {dbUser.creditBalance.toLocaleString()}
                     </div>
                 </div>
 
@@ -99,26 +105,29 @@ export default async function SettingsPage() {
           <CardContent className="flex-1 pt-6 space-y-6">
              <div className="space-y-2">
                  <h4 className="text-sm font-medium text-white/60 uppercase tracking-wide">Current Plan</h4>
-                 <div className={`inline-flex items-center px-4 py-2 rounded-lg border ${planColor}`}>
+                 <div className={`inline-flex items-center px-4 py-2 rounded-lg border transition-all ${planColor}`}>
                      <span className="font-bold text-lg">{planName}</span>
-                     {planName !== "Free Plan" && <Badge className="ml-3 bg-green-500 hover:bg-green-600 text-white border-0">ACTIVE</Badge>}
+                     {planName !== "Free Tier" && <Badge className="ml-3 bg-green-500 hover:bg-green-600 text-white border-0">ACTIVE</Badge>}
                  </div>
              </div>
 
              <div className="space-y-2">
                  <p className="text-sm text-white/50">
-                    {planName === "Free Plan" 
+                    {planName === "Free Tier" 
                         ? "Upgrade to Pro to unlock higher limits and faster generation speeds." 
-                        : "Your plan renews automatically. You can cancel anytime."}
+                        : "Your credits never expire. Top up anytime."}
                  </p>
              </div>
           </CardContent>
 
           <CardFooter className="pt-6 border-t border-white/5 bg-black/10">
-             {/* If using Stripe Customer Portal, you would link to it here */}
-             <Button className="w-full gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10" variant="outline">
-                 Manage Subscription <ExternalLink className="w-4 h-4 opacity-50" />
-             </Button>
+             {/* Razorpay Flow: Redirect to Pricing to buy more or upgrade */}
+             <Link href="/#pricing" className="w-full">
+                 <Button className="w-full gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10" variant="outline">
+                     {planName === "Free Tier" ? "Upgrade Plan" : "Buy More Credits"} 
+                     <ExternalLink className="w-4 h-4 opacity-50" />
+                 </Button>
+             </Link>
           </CardFooter>
         </Card>
 

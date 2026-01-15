@@ -31,8 +31,14 @@ model User {
 
   // 1. ADMIN & BILLING
   role          UserRole  @default(USER)
-  creditBalance Int       @default(25) // 👈 Standard start: 25 Credits
+  creditBalance Int       @default(25) // Standard start: 25 Credits
   isBlocked     Boolean   @default(false)
+
+  // 👇 RAZORPAY & PLAN FIELDS (Updated)
+  razorpayCustomerId String?   @unique // Optional: To store Razorpay Customer ID if needed
+  planName           String?   // "Pro Plan", "Ultra Plan" (Stored directly for easy access)
+  planActive         Boolean   @default(false)
+  planExpiresAt      DateTime? // When the plan ends
 
   // 2. WHATSAPP-LIKE FIELDS
   pinnedChatIds String[]  @default([])
@@ -122,28 +128,33 @@ model SupportTicket {
   @@index([userId])
 }
 
-// 3. TRANSACTIONS
+// 3. TRANSACTIONS (UPDATED FOR RAZORPAY)
 model Transaction {
   id        String   @id @default(cuid())
   userId    String
-  amount    Int      // In cents
+  amount    Int      // In paise (e.g., 2900 = ₹29.00)
   credits   Int      
   status    String   // "SUCCESS", "FAILED"
-  stripeId  String?
   
+  // 👇 Razorpay Specific Fields
+  planName          String?  // "Pro Plan", "Ultra Plan"
+  currency          String   @default("INR")
+  razorpayPaymentId String?  @unique
+  razorpayOrderId   String?  @unique
+
   createdAt DateTime @default(now())
   
   user      User     @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
 }
 
-// 4. NOTIFICATIONS (UPDATED)
+// 4. NOTIFICATIONS
 model Notification {
   id        String   @id @default(cuid())
   userId    String
   title     String
   message   String
   isRead    Boolean  @default(false)
-  type      String   @default("INFO") // 👈 Added for visual distinction
+  type      String   @default("INFO") 
 
   link      String?
   

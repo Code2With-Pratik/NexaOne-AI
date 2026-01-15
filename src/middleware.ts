@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// 👇 ADD '/api/razorpay(.*)' TO THIS LIST
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)', 
   '/api/image(.*)',
@@ -7,20 +8,21 @@ const isProtectedRoute = createRouteMatcher([
   '/api/code(.*)',
   '/api/music(.*)',
   '/api/video(.*)',
+  '/api/razorpay(.*)', // 👈 Added: Protects payment routes
   '/admin(.*)'
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {
-    // 👇 FIX: Do not call auth(). Just use auth.protect()
-    // It is now a direct method on the auth object.
     await auth.protect();
   }
 });
 
 export const config = {
   matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
     '/(api|trpc)(.*)',
   ],
 };
