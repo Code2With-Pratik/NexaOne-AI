@@ -55,6 +55,7 @@
     "react-markdown": "^10.1.0",
     "react-simple-star-rating": "^5.1.7",
     "react-to-print": "^3.2.0",
+    "recharts": "^3.6.0",
     "simple-peer": "^9.11.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image"; // 👈 Added Image Import
 import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
 import { useClerk } from "@clerk/nextjs";
@@ -22,13 +23,11 @@ import {
   LogOut,
   Sparkles,
   X,
-  ShieldCheck // 👈 Import Admin Icon
+  ShieldCheck 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ... (Keep your sidebarItems array exactly as it is) ...
 const sidebarItems = [
-  // ... your existing items ...
   { 
     name: "Dashboard", 
     href: "/dashboard", 
@@ -66,24 +65,22 @@ const sidebarItems = [
   },
 ];
 
-// 👇 Update Props Interface
 interface SidebarProps {
   apiLimitCount?: number;
   isPro?: boolean;
-  isAdmin?: boolean; // 👈 Add this
+  isAdmin?: boolean;
 }
 
 export const Sidebar = ({ 
   apiLimitCount = 0, 
   isPro = false,
-  isAdmin = false // 👈 Default to false
+  isAdmin = false 
 }: SidebarProps) => {
   const pathname = usePathname();
   const { isSidebarOpen } = useAppStore(); 
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const { signOut } = useClerk();
 
-  // ... (Keep your toggleMenu and handleLinkClick functions here) ...
   const toggleMenu = (name: string) => {
     if (!isSidebarOpen) {
        useAppStore.setState({ isSidebarOpen: true });
@@ -124,14 +121,26 @@ export const Sidebar = ({
         
         {/* Brand Logo & Close Button */}
         <div className={cn("h-16 flex items-center border-b border-white/10 transition-all shrink-0", isSidebarOpen ? "px-6 justify-between" : "justify-center px-0")}>
-          <div className="flex items-center overflow-hidden">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-tr from-indigo-500 to-purple-500">
-               <span className="font-bold text-white">N</span>
+          
+          {/* 👇 UPDATED LOGO SECTION: Clickable & Uses Image */}
+          <Link 
+            href="/" 
+            className="flex items-center overflow-hidden hover:opacity-80 transition-opacity"
+          >
+            <div className="relative w-8 h-8 shrink-0">
+               <Image 
+                 src="/favicon.ico" 
+                 alt="Logo" 
+                 fill 
+                 className="object-contain"
+               />
             </div>
             <span className={cn("font-bold text-lg text-white ml-3 whitespace-nowrap transition-opacity duration-200", !isSidebarOpen && "hidden opacity-0")}>
               NexaOne <span className="text-indigo-400">AI</span>
             </span>
-          </div>
+          </Link>
+          {/* 👆 END UPDATED SECTION */}
+
           <button 
             onClick={() => useAppStore.setState({ isSidebarOpen: false })}
             className="md:hidden p-2 text-white/50 hover:text-white rounded-lg hover:bg-white/10"
@@ -143,7 +152,7 @@ export const Sidebar = ({
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto py-6 px-3 space-y-2 custom-scrollbar">
           
-          {/* 👇 ADMIN BUTTON (Only shows if isAdmin is true) */}
+          {/* ADMIN BUTTON (Only shows if isAdmin is true) */}
           {isAdmin && (
              <Link
                href="/admin"
@@ -158,11 +167,9 @@ export const Sidebar = ({
                {isSidebarOpen && <span className="text-sm font-bold text-red-400 ml-3">Admin Console</span>}
              </Link>
           )}
-          {/* 👆 END ADMIN BUTTON */}
 
           {sidebarItems.map((item) => (
              <div key={item.name}>
-               {/* ... (Keep your existing mapping logic exactly the same) ... */}
                {item.subItems ? (
                 <>
                   <button
