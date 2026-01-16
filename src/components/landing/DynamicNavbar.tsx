@@ -75,11 +75,12 @@ export const DynamicNavbar = () => {
           
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group relative z-10 cursor-pointer">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+            {/* <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
               <span className="text-white font-bold text-lg">A</span>
-            </div>
-            <span className="font-bold text-xl tracking-tight text-white hidden sm:block">
-              NexaOne<span className="text-indigo-400"> AI</span>
+            </div> */}
+            <img src="/favicon.ico" alt="Favicon" className="h-10 w-10" />
+            <span className="font-bold text-xl tracking-tight text-white hidden sm:block mb-1">
+              NexaOne<span className="text-pink-400"> AI</span>
             </span>
           </Link>
 
@@ -89,7 +90,7 @@ export const DynamicNavbar = () => {
               <Link 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors cursor-pointer relative z-10"
+                className="font-medium text-white/60 hover:text-white transition-colors cursor-pointer relative z-10"
               >
                 {item}
               </Link>
@@ -102,7 +103,7 @@ export const DynamicNavbar = () => {
                // --- LOGGED IN VIEW ---
                <>
                  <Link href="/dashboard">
-                   <button className="px-5 py-2 rounded-full bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-500 transition-all flex items-center gap-2 hover:scale-105 shadow-lg shadow-indigo-500/25">
+                   <button className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold text-sm flex items-center gap-2 cursor-pointer">
                      <LayoutDashboard className="w-4 h-4" /> Dashboard
                    </button>
                  </Link>
