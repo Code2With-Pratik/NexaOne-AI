@@ -13,7 +13,7 @@ import { SocketProvider } from "@/providers/SocketProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "AI Super App",
+  title: "NexaOne AI",
   description: "The future of AI and communication.",
 };
 
