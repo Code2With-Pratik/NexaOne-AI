@@ -74,7 +74,7 @@ export const DynamicNavbar = () => {
         <div className={cn("flex items-center justify-between w-full transition-opacity duration-200", isScrolled && !isHovered ? "opacity-0 invisible" : "opacity-100 visible delay-100")}>
           
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group relative z-10 cursor-pointer">
+          <Link href="#hero" className="flex items-center gap-2 group relative z-10 cursor-pointer">
             {/* <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
               <span className="text-white font-bold text-lg">A</span>
             </div> */}
@@ -86,7 +86,7 @@ export const DynamicNavbar = () => {
 
           {/* Nav Links - Hidden on small mobile */}
           <div className="hidden md:flex items-center gap-8">
-            {["Features", "Testimonials", "Pricing"].map((item) => (
+            {["About", "Features", "Testimonials", "Pricing"].map((item) => (
               <Link 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 

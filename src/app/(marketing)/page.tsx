@@ -1,4 +1,5 @@
 import { Hero } from "@/components/landing/Hero";
+import { About } from "@/components/landing/About";
 import { Features } from "@/components/landing/Features";
 import { DashboardPreview } from "@/components/landing/DashboardPreview"; // New
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -11,6 +12,9 @@ export default function LandingPage() {
     <main className="flex flex-col w-full min-h-screen bg-transparent">
       {/* 1. Hero Section */}
       <Hero />
+
+      {/* 2. About Grid */}
+      <About/>
 
       {/* 2. Features Grid */}
       <Features />

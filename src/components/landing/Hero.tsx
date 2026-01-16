@@ -33,7 +33,7 @@ export const Hero = () => {
 
   // --- CUSTOM SMOOTH SCROLL FUNCTION ---
   const handleScrollDown = () => {
-    const featureSection = document.getElementById("features");
+    const featureSection = document.getElementById("about");
     
     if (featureSection) {
       const targetPosition = featureSection.getBoundingClientRect().top + window.scrollY;
@@ -61,7 +61,7 @@ export const Hero = () => {
   };
 
   return (
-    <section
+    <section id="hero"
       ref={containerRef}
       // Changed: h-screen to h-[100svh] for better mobile browser support
       className="relative h-[100svh] w-full overflow-hidden"
