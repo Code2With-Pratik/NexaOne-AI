@@ -5,7 +5,7 @@ import Spline from "@splinetool/react-spline";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Star, ChevronDown } from "lucide-react";
+import { ArrowRight, Sparkles, Star, ChevronsDown } from "lucide-react";
 
 export const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,7 +72,7 @@ export const Hero = () => {
     >
       {/* 3D Background Layer */}
       <div className="absolute inset-0 z-0 h-full w-full flex items-center justify-center pointer-events-none">
-         <div className="relative w-full h-full scale-190 -translate-x-10 md:translate-y-0">
+         <div className="relative w-full h-full scale-190 -translate-x-15 md:translate-y-0">
             <Spline scene="https://prod.spline.design/S5F2s4yId-8dZbvp/scene.splinecode" />
          </div>
         <div className="absolute inset-0 bg-gradient-to-t from-fuchsia-900/20 via-transparent to-black/40" />
@@ -93,7 +93,7 @@ export const Hero = () => {
             <br />
             
             {/* Line 2: Blue/Purple Gradient */}
-            <span className="text-8xl ml-32 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+            <span className="text-8xl ml-32 text-transparent bg-clip-text bg-gradient-to-r from-indigo-100 to-pink-400">
                with
             </span>
             <br />
@@ -114,7 +114,7 @@ export const Hero = () => {
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <Link
               href="/dashboard"
-              className="px-5 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all hover:scale-105 flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+              className="px-5 py-4 rounded-full bg-white text-black font-bold text-lg hover:bg-indigo-50 transition-all hover:scale-98 flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
             >
               Get Started Free <ArrowRight className="w-5 h-5" />
             </Link>
@@ -171,11 +171,11 @@ export const Hero = () => {
       {/* --- SCROLL DOWN BUTTON --- */}
       <button 
         onClick={handleScrollDown}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 text-white/40 hover:text-white transition-colors duration-300 animate-bounce cursor-pointer pointer-events-auto"
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 text-white/60 hover:text-white transition-colors duration-900 animate-bounce cursor-pointer pointer-events-auto"
         aria-label="Scroll to features"
       >
         <span className="text-xs font-medium tracking-widest uppercase">Scroll</span>
-        <ChevronDown className="w-6 h-6" />
+        <ChevronsDown className="w-6 h-6" />
       </button>
 
     </section>
