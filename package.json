@@ -27,7 +27,7 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@splinetool/react-spline": "^4.1.0",
-    "@splinetool/runtime": "^1.12.29",
+    "@splinetool/runtime": "^1.12.36",
     "@supabase/supabase-js": "^2.90.0",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
