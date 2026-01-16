@@ -86,7 +86,7 @@ export const DynamicNavbar = () => {
 
           {/* Nav Links - Hidden on small mobile */}
           <div className="hidden md:flex items-center gap-8">
-            {["About", "Features", "Testimonials", "Pricing"].map((item) => (
+            {["About", "Features", "Testimonials", "Pricing" , "Contact"].map((item) => (
               <Link 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 

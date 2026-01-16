@@ -21,7 +21,7 @@ const plans = [
   },
   {
     name: "Creator",
-    price: "₹29",
+    price: "₹299",
     credits: "1,500 Credits",
     desc: "For power users.",
     features: ["Priority Processing", "4K Image Downloads", "AI Article Writer"],
@@ -31,7 +31,7 @@ const plans = [
   },
   {
     name: "Agency",
-    price: "₹99",
+    price: "₹999",
     credits: "10,000 Credits",
     desc: "Scale your production.",
     features: ["Unlimited Chat History", "Dedicated Support", "API Access"],
@@ -88,7 +88,7 @@ export const Pricing = () => {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: data.amount,
             currency: "INR",
-            name: "AI SuperApp",
+            name: "NexaOne AI",
             description: `Upgrade to ${planType} Plan`,
             order_id: data.orderId,
             handler: async function (response: any) {
@@ -136,14 +136,14 @@ export const Pricing = () => {
     <section id="pricing" className="py-32 px-6 bg-transparent text-white relative">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-20 space-y-4">
-          <h2 className="text-sm font-mono text-indigo-400 tracking-widest uppercase">Flexible Pricing</h2>
+          <h2 className="text-pink-500 tracking-widest uppercase">Flexible Pricing</h2>
           <h3 className="text-4xl md:text-5xl font-bold">Simple Plans. <span className="text-white/40">No Hidden Fees.</span></h3>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 items-center">
           {plans.map((plan, idx) => (
-            <div key={idx} className={cn("relative p-8 rounded-3xl border transition-all duration-300", plan.popular ? "bg-white/5 border-indigo-500/50 scale-105 z-10" : "bg-transparent border-white/10")}>
-              {plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-indigo-500 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2"><Zap className="w-3 h-3 fill-white" /> Most Popular</div>}
+            <div key={idx} className={cn("relative p-8 rounded-3xl border-2 transition-all duration-300", plan.popular ? "bg-pink-500/5 border-pink-500/50 scale-105 z-10" : "bg-transparent border-white/10")}>
+              {plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-pink-500 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2"><Zap className="w-3 h-3 fill-white" /> Most Popular</div>}
               
               <div className="mb-8">
                 <h4 className="text-lg font-medium text-white/60 mb-2">{plan.name}</h4>
@@ -151,21 +151,21 @@ export const Pricing = () => {
                   <span className="text-5xl font-bold">{plan.price}</span>
                 </div>
                 <div className="mt-4 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 inline-block">
-                    <span className="text-indigo-300 font-bold text-sm">{plan.credits}</span>
+                    <span className="text-pink-400 font-bold text-sm">{plan.credits}</span>
                 </div>
                 <p className="mt-4 text-sm text-white/50">{plan.desc}</p>
               </div>
 
               <div className="space-y-4 mb-8">
                 {plan.features.map((feat, i) => (
-                   <div key={i} className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center"><Check className="w-3 h-3 text-green-400" /></div><span className="text-sm text-white/80">{feat}</span></div>
+                   <div key={i} className="flex items-center gap-3"><div className="w-5 h-5 rounded-full bg-pink-500/20 flex items-center justify-center"><Check className="w-3 h-3 text-pink-400" /></div><span className="text-sm text-white/80">{feat}</span></div>
                 ))}
               </div>
 
               <button
                 onClick={() => handlePayment(plan.type)}
                 disabled={loading !== null}
-                className={cn("w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2", plan.popular ? "bg-white text-black hover:bg-indigo-50" : "bg-white/10 text-white hover:bg-white/20")}
+                className={cn("w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer", plan.popular ? "bg-gradient-to-r from-purple-500 to-pink-500 hover:bg-pink-400" : "bg-white/10 text-white hover:bg-white/15")}
               >
                 {loading === plan.type ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : plan.cta}
               </button>

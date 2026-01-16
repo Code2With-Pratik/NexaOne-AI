@@ -39,16 +39,16 @@ export const DashboardPreview = () => {
   }, []);
 
   return (
-    <section 
+    <section id="dashboard"
       ref={containerRef} 
       className="py-20 bg-transparent text-white relative perspective-[1000px] overflow-hidden"
     >
       {/* Glow Effect behind the dashboard */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[50%] bg-indigo-600/30 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[50%] bg-pink-600/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 text-center mb-12">
         <h2 className="text-4xl md:text-5xl font-bold mb-4">
-          One Interface. <span className="text-pink-400">Infinite Possibilities.</span>
+          One Interface. <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Infinite Possibilities.</span>
         </h2>
         <p className="text-lg text-white/60">
           Experience a unified workspace where communication meets creation.
@@ -89,7 +89,7 @@ export const DashboardPreview = () => {
           {/* Mock Main Content */}
           <div className="flex-1 p-8 grid grid-cols-3 gap-6">
             {/* Header Area */}
-            <div className="col-span-3 h-32 rounded-2xl bg-linear-to-r from-indigo-900/20 to-pink-900/40 border border-white/10 p-6 flex items-end">
+            <div className="col-span-3 h-32 rounded-2xl bg-linear-to-r from-purple-900/20 to-pink-900/40 border border-white/10 p-6 flex items-end">
                <div className="space-y-2">
                  <div className="h-8 w-64 bg-white/10 rounded" />
                  <div className="h-4 w-48 bg-white/10 rounded" />
@@ -101,7 +101,7 @@ export const DashboardPreview = () => {
               <div className="h-64 rounded-2xl bg-[#111]/40 border border-white/10 p-4 flex flex-col gap-4 relative overflow-hidden">
                 <div className="absolute top-4 right-4"><MessageSquare className="text-white/20" /></div>
                 <div className="flex-1 flex items-end gap-2">
-                   <div className="w-3/4 h-12 rounded-t-xl rounded-br-xl bg-pink-600/20 border border-white/30" />
+                   <div className="w-3/4 h-12 rounded-t-xl rounded-br-xl bg-pink-600/20 border border-white/10" />
                    <div className="w-1/2 h-12 rounded-t-xl rounded-bl-xl bg-white/5 self-end ml-auto" />
                 </div>
               </div>

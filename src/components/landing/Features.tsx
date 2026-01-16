@@ -113,8 +113,10 @@ export const Features = () => {
           <h2 className="text-pink-400 tracking-widest uppercase">
             Powerhouse Tools
           </h2>
-          <h3 className="text-4xl md:text-5xl font-bold">
+          <h3 className="text-4xl md:text-6xl ml-5 font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-indigo-500">
             Everything You Need. <br />
+          </h3>
+          <h3 className="text-4xl md:text-6xl ml-5 font-bold">
             <span className="text-white/40">In One Dashboard.</span>
           </h3>
         </div>

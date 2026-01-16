@@ -123,7 +123,7 @@ export function Testimonials() {
       
       <div className="text-center mb-16 px-6 relative z-10">
         <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r text-white mb-4">
-          Loved by our <span className="text-indigo-400">Users</span> 
+          Loved by our <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Users</span> 
         </h2>
         <p className="text-white/50 text-lg">
           See what the community has to say about the NexaOneAI.
@@ -153,18 +153,18 @@ export function Testimonials() {
 // --- CARD COMPONENT ---
 function TestimonialCard({ review }: { review: Testimonial }) {
   return (
-    <div className="relative w-[320px] md:w-[400px] p-8 rounded-3xl bg-gradient-to-b from-black/20 to-indigo-900/30 
+    <div className="relative w-[320px] md:w-[400px] p-8 rounded-3xl bg-gradient-to-b from-black/20 to-pink-900/20 
      border-3 border-white/10 shadow-2xl transition-all duration-500
 
-      hover:bg-indigo-900/15 /* Slight internal brighten */
-      hover:border-indigo-500/50 /* Border lights up */
-      hover:shadow-[0_0_40px_-10px_rgba(99,102,241,0.6)] /* The Indigo colored glow shadow */
+      hover:bg-pink-900/15 /* Slight internal brighten */
+      hover:border-pink-500/50 /* Border lights up */
+      hover:shadow-[0_0_40px_-10px_rgba(255,182,193,0.6)] /* The pink colored glow shadow */
       hover:-translate-y-1 /* Subtle lift */
       
       group flex-shrink-0 whitespace-normal select-none mr-6 /* Add margin for spacing */
     ">
       {/* Top Right Quote Icon - updated hover color to match glow */}
-      <Quote className="absolute top-8 right-8 w-6 h-6 text-white/30 group-hover:text-indigo-400/50 transition-colors" />
+      <Quote className="absolute top-8 right-8 w-6 h-6 text-white/30 group-hover:text-pink-400/50 transition-colors" />
       
       {/* THE NEW RATING PILL */}
       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md mb-8">
@@ -181,7 +181,7 @@ function TestimonialCard({ review }: { review: Testimonial }) {
       {/* Footer Section - Integrated your existing user details */}
       <div className="flex items-center gap-4">
         {/* Avatar - Switched to rounded square to match modern aesthetic */}
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white uppercase shrink-0 shadow-lg shadow-indigo-500/20">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-sm font-bold text-white uppercase shrink-0 shadow-lg shadow-pink-500/10">
             {review.avatar ? (
                 <img src={review.avatar} alt={review.name} className="w-full h-full rounded-2xl object-cover" />
             ) : (
@@ -191,7 +191,7 @@ function TestimonialCard({ review }: { review: Testimonial }) {
         <div>
           <h4 className="text-white flex items-center gap-2 font-bold text-base leading-none mb-1">{review.name}
            {/* Added explicit text color to badge for better contrast against glass */}
-           <BadgeCheck className="w-4 h-4 text-blue-400 fill-blue-400/10" />
+           <BadgeCheck className="w-4 h-4 text-pink-500 fill-blue-400/10" />
           </h4>
           <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Verified User
           </p>
