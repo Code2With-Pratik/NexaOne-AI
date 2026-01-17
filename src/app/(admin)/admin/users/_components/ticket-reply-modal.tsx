@@ -13,7 +13,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageSquareReply } from "lucide-react";
-import { adminReplyTicket } from "@/actions/support";
+import { resolveTicket } from "@/actions/support";
 import { toast } from "sonner";
 
 export const TicketReplyModal = ({ ticket }: { ticket: any }) => {
@@ -25,7 +25,7 @@ export const TicketReplyModal = ({ ticket }: { ticket: any }) => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await adminReplyTicket(ticket.id, reply, status);
+      await resolveTicket(ticket.id, reply, status);
       toast.success("Ticket updated");
       setIsOpen(false);
     } catch (error) {

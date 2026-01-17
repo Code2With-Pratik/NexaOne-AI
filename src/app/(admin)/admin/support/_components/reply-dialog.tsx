@@ -1,9 +1,11 @@
 "use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { resolveTicket } from "@/actions/admin"; // We created this in previous steps
+// ✅ FIX: Import from 'support', not 'admin'
+import { resolveTicket } from "@/actions/support"; 
 import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 
@@ -15,7 +17,8 @@ export const ReplyDialog = ({ ticketId }: { ticketId: string; currentStatus: str
     const onResolve = async (status: "RESOLVED" | "REJECTED") => {
         setLoading(true);
         try {
-            await resolveTicket(ticketId, reply, status); // Need to update action to accept status
+            // This will now work because resolveTicket in 'support.ts' accepts 3 arguments
+            await resolveTicket(ticketId, reply, status); 
             toast.success(`Ticket ${status.toLowerCase()}`);
             setOpen(false);
         } catch {

@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 
 // 1. USER: Create a new ticket (Contact Form)
 export async function createTicket(formData: FormData) {
-  // FIX: Add 'await' here
   const { userId } = await auth();
   
   if (!userId) throw new Error("Must be logged in");
@@ -28,15 +27,19 @@ export async function createTicket(formData: FormData) {
 }
 
 // 2. ADMIN: Reply and Update Status
-export async function adminReplyTicket(ticketId: string, reply: string, status: "RESOLVED" | "REJECTED" | "IN_PROGRESS") {
-  // FIX: Add 'await' here too
+// ✅ FIX: Renamed function to 'resolveTicket' to match your client-side import
+export async function resolveTicket(
+  ticketId: string, 
+  reply: string, 
+  status: "RESOLVED" | "REJECTED" | "IN_PROGRESS"
+) {
   const { userId } = await auth();
   
   if (!userId) throw new Error("Unauthorized");
   
   const user = await db.user.findUnique({ where: { clerkId: userId } });
   
-  // Optional: Check if user exists before checking role to avoid crashes
+  // Security Check: Ensure only Admin can resolve
   if (!user || user.role !== "ADMIN") throw new Error("Admin only");
 
   // Update the ticket

@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
+    // ✅ FIX: Add 'await' before auth()
+    const { userId } = await auth();
+    
     const body = await req.json();
     const { subject, message } = body;
 

@@ -59,21 +59,25 @@ export default function ArticleWriterPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // --- PDF PRINT FUNCTION ---
-  const handleDownloadPDF = useReactToPrint({
+  // --- PDF PRINT CONFIGURATION ---
+  // ✅ FIX: Removed 'onBeforeGetContent' to support react-to-print v7+
+  const printContent = useReactToPrint({
     contentRef: contentRef, 
     documentTitle: `Article-${Date.now()}`,
-    onBeforeGetContent: () => {
-      if (!generatedText) {
-        toast.error("Generate an article first!");
-        return Promise.reject();
-      }
-      return Promise.resolve();
-    },
     onAfterPrint: () => {
         toast.success("PDF Downloaded successfully");
     }
   });
+
+  // ✅ FIX: Created this wrapper to handle validation BEFORE triggering print
+  const handleDownloadPDF = () => {
+    if (!generatedText) {
+      toast.error("Generate an article first!");
+      return;
+    }
+    // Only call the print function if text exists
+    printContent();
+  };
 
   return (
     <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-6">
@@ -86,7 +90,7 @@ export default function ArticleWriterPage() {
       {/* LEFT: Configuration */}
       <div className="w-full md:w-96 space-y-6">
         
-        {/* 👇 NEW HEADER SECTION ADDED HERE */}
+        {/* HEADER SECTION */}
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500">
             <PenTool className="w-8 h-8" />
@@ -178,7 +182,7 @@ export default function ArticleWriterPage() {
              {generatedText && (
                <>
                  <button 
-                   onClick={() => handleDownloadPDF()}
+                   onClick={handleDownloadPDF} // ✅ FIX: Points to the new wrapper function
                    className="text-xs text-white/70 hover:text-white flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-white/5 transition-colors border border-white/10"
                    title="Download as PDF"
                  >
@@ -217,9 +221,9 @@ export default function ArticleWriterPage() {
                   strong: ({node, ...props}) => <span className="font-bold text-red-600" {...props} />,
                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-orange-500 pl-4 italic my-4 text-gray-500" {...props} />,
                 }}
-             >
-               {generatedText}
-             </ReactMarkdown>
+               >
+                 {generatedText}
+               </ReactMarkdown>
              ) : (
                <div className="h-full flex flex-col items-center justify-center min-h-[400px]">
                   <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">

@@ -75,6 +75,7 @@ export const AdminPieChart = ({ data }: AdminPieChartProps) => {
                   paddingAngle={4}
                   dataKey="value"
                   stroke="none"
+                  // @ts-ignore: Recharts type definition missing activeIndex
                   activeIndex={activeIndex}
                   activeShape={renderActiveShape} // 👈 Use the custom shape
                   onMouseEnter={onPieEnter} // Highlight on hover

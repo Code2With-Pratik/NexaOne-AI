@@ -87,21 +87,26 @@ export default function EmailGeneratorPage() {
     }
   };
 
-  // --- PDF DOWNLOAD ---
-  const handleDownloadPDF = useReactToPrint({
+  // --- PDF DOWNLOAD LOGIC (FIXED) ---
+  
+  // 1. Configure the print action (without validation logic)
+  const printContent = useReactToPrint({
     contentRef: contentRef,
     documentTitle: `Email-Draft-${Date.now()}`,
-    onBeforeGetContent: () => {
-      if (!generatedEmail) {
-        toast.error("Generate an email first!");
-        return Promise.reject();
-      }
-      return Promise.resolve();
-    },
     onAfterPrint: () => {
         toast.success("PDF Downloaded successfully");
     }
   });
+
+  // 2. Create a wrapper to validate BEFORE printing
+  const handleDownloadPDF = () => {
+    if (!generatedEmail) {
+      toast.error("Generate an email first!");
+      return;
+    }
+    // Only print if email exists
+    printContent();
+  };
 
   return (
     <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-8">
@@ -185,7 +190,7 @@ export default function EmailGeneratorPage() {
           </button>
 
           <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-xs text-center">
-             Generation costs <span className="font-bold">2 Credits</span>.
+              Generation costs <span className="font-bold">2 Credits</span>.
           </div>
 
         </div>
@@ -208,9 +213,9 @@ export default function EmailGeneratorPage() {
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   
-                  {/* PDF Download Trigger */}
+                  {/* PDF Download Trigger - Updated to call wrapper */}
                   <button 
-                    onClick={() => handleDownloadPDF()} 
+                    onClick={handleDownloadPDF} 
                     className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-colors"
                     title="Download PDF"
                   >

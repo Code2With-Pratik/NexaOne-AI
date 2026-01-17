@@ -6,13 +6,13 @@ import {
   Trash2, BellOff, Bell, Pin, PinOff, ArrowLeft, FileText, Download, Sticker
 } from "lucide-react";
 import { cn } from '@/lib/utils';
-import EmojiPicker from "emoji-picker-react";
+// ✅ FIX 1: Import 'Theme' from the library
+import EmojiPicker, { Theme } from "emoji-picker-react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import CallOverlay1on1 from "@/components/calls/CallOverlay1on1";
 import { useSocket } from "@/providers/SocketProvider";
-// 👇 IMPORT THE NEW COMPONENT
 import VoiceMessage from "@/components/chat/VoiceMessage"; 
 
 // --- TYPES ---
@@ -136,12 +136,19 @@ export default function ChatPage() {
         const res = await fetch(`/api/chat/history?partnerId=${activeChatId}`);
         const data = await res.json();
         if (!Array.isArray(data)) return;
-        const formattedMessages = data.map((msg: any) => ({
-          id: msg.id, text: msg.content, senderId: msg.senderId, receiverId: msg.receiverId,
+        
+        const formattedMessages: Message[] = data.map((msg: any) => ({
+          id: msg.id, 
+          text: msg.content, 
+          senderId: msg.senderId, 
+          receiverId: msg.receiverId,
           time: new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          date: formatDateLabel(msg.createdAt), type: msg.type as MessageType, status: "read",
+          date: formatDateLabel(msg.createdAt), 
+          type: msg.type as MessageType, 
+          status: "read", 
           fileName: msg.fileName
         }));
+        
         setConversations(prev => ({ ...prev, [activeChatId]: formattedMessages }));
         
         if(socket) socket.emit("mark_messages_read", { senderId: activeChatId, receiverId: user.id });
@@ -156,9 +163,14 @@ export default function ChatPage() {
 
     const handleReceiveMessage = (msg: any) => {
       const formattedMsg: Message = {
-        id: msg.id || Date.now().toString(), text: msg.text || msg.content, senderId: msg.senderId, receiverId: msg.receiverId,
+        id: msg.id || Date.now().toString(), 
+        text: msg.text || msg.content, 
+        senderId: msg.senderId, 
+        receiverId: msg.receiverId,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: formatDateLabel(new Date().toISOString()), type: msg.type || "text", status: "delivered",
+        date: formatDateLabel(new Date().toISOString()), 
+        type: (msg.type as MessageType) || "text", 
+        status: "delivered",
         fileName: msg.fileName
       };
       
@@ -340,7 +352,7 @@ export default function ChatPage() {
 
   const contactsWithStatus = contacts.map(c => ({
       ...c,
-      status: onlineUsers.includes(c.id) ? "Online" : "Offline",
+      status: (onlineUsers.includes(c.id) ? "Online" : "Offline") as "Online" | "Offline",
       lastMessage: lastMessages[c.id] || "Tap to chat"
   }));
 
@@ -446,7 +458,7 @@ export default function ChatPage() {
                           {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
                           {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
                           
-                          {/* 👇 REPLACED AUDIO TAG WITH NEW COMPONENT */}
+                          {/* 👇 VOICE MESSAGE COMPONENT */}
                           {m.type === 'voice' && <VoiceMessage src={m.text} isMe={isMe} />}
                           
                           {m.type === 'file' && (
@@ -475,24 +487,20 @@ export default function ChatPage() {
 
               {/* INPUT AREA */}
               <div className="p-4 bg-black/40 border-t border-white/10 relative z-30">
-                 {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
+                 {/* ✅ FIX 2: Use Theme.DARK enum instead of "dark" string */}
+                 {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme={Theme.DARK} onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
                  {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1ad8] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
                  
                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
                    
-                   {/* 👇 NEW RECORDING UI */}
+                   {/* RECORDING UI */}
                    {isRecording ? (
                       <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
-                          {/* Animated Background Glow */}
                           <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
-
-                          {/* Left: REC Indicator */}
                           <div className="flex items-center gap-2 pl-4 z-10">
                               <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
                               <span className="text-xs font-mono font-bold tracking-widest text-red-500">REC</span>
                           </div>
-
-                          {/* Center: Live Waveform Animation */}
                           <div className="flex items-center justify-center gap-1 h-8 flex-1 mx-4">
                               {[...Array(12)].map((_, i) => (
                                   <div 
@@ -504,7 +512,6 @@ export default function ChatPage() {
                                           height: '100%' 
                                       }}
                                   >
-                                      {/* Inline Keyframes for this specific component */}
                                       <style jsx>{`
                                           @keyframes wave {
                                               0%, 100% { height: 15%; opacity: 0.3; }
@@ -514,22 +521,9 @@ export default function ChatPage() {
                                   </div>
                               ))}
                           </div>
-
-                          {/* Right: Actions */}
                           <div className="flex items-center gap-3 pr-2 z-10">
-                              <button 
-                                  onClick={cancelRecording} 
-                                  className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
-                              >
-                                  <Trash2 className="w-5 h-5" />
-                              </button>
-                              
-                              <button 
-                                  onClick={stopRecording} 
-                                  className="w-10 h-10 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                              >
-                                  <Send className="w-4 h-4 ml-0.5 fill-current" />
-                              </button>
+                              <button onClick={cancelRecording} className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"><Trash2 className="w-5 h-5" /></button>
+                              <button onClick={stopRecording} className="w-10 h-10 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"><Send className="w-4 h-4 ml-0.5 fill-current" /></button>
                           </div>
                       </div>
                    ) : (

@@ -29,7 +29,9 @@ const getColor = (tool: string) => {
 };
 
 export default async function HistoryPage() {
-  const { userId } = auth();
+  // ✅ FIX: Added 'await' here
+  const { userId } = await auth();
+  
   if (!userId) redirect("/");
 
   const history = await db.history.findMany({
