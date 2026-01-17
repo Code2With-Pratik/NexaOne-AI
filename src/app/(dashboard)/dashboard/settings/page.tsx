@@ -31,26 +31,26 @@ export default async function SettingsPage() {
   if (planName === "Ultra Plan") {
       planColor = "text-purple-400 border-purple-500/50 bg-purple-500/10 shadow-[0_0_15px_rgba(168,85,247,0.2)]";
   } else if (planName === "Pro Plan") {
-      planColor = "text-indigo-400 border-indigo-500/50 bg-indigo-500/10 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
+      planColor = "text-pink-400 border-pink-500/50 bg-pink-500/10 shadow-[0_0_15px_rgba(99,102,241,0.2)]";
   }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white">My Account</h1>
-        <p className="text-white/50">Manage your profile and subscription details.</p>
+        <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600">My Account</h1>
+        <p className="text-white/70">Manage your profile and subscription details.</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         
         {/* CARD 1: PROFILE & CREDITS */}
-        <Card className="bg-[#4f39f612] border-2 border-white/10 text-white shadow-xl relative overflow-hidden">
+        <Card className="bg-pink-600/10 border-2 border-pink-500/30 text-white shadow-xl relative overflow-hidden">
           {/* Decorative background blur */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
           
           <CardHeader className="pb-4 border-b border-white/5">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <UserIcon className="w-5 h-5 text-indigo-400" /> Profile Details
+              <UserIcon className="w-5 h-5 text-pink-600" /> Profile Details
             </CardTitle>
           </CardHeader>
           
@@ -59,7 +59,7 @@ export default async function SettingsPage() {
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 border-2 border-white/10 shadow-lg">
                 <AvatarImage src={user.imageUrl || ""} />
-                <AvatarFallback className="bg-indigo-600 text-white">{user.firstName?.[0]}</AvatarFallback>
+                <AvatarFallback className="bg-pink-600 text-white">{user.firstName?.[0]}</AvatarFallback>
               </Avatar>
               <div className="space-y-1">
                 <h3 className="text-xl font-bold leading-none">{user.fullName}</h3>
@@ -72,7 +72,7 @@ export default async function SettingsPage() {
             {/* Grid Stats */}
             <div className="grid grid-cols-2 gap-4">
                 {/* Credit Balance */}
-                <div className="p-4 bg-black/20 rounded-xl border border-white/5 space-y-1">
+                <div className="p-4 bg-black/2 rounded-xl border border-white/5 space-y-1">
                     <div className="flex items-center gap-2 text-white/60 text-xs uppercase font-bold tracking-wider">
                         <Zap className="w-3 h-3 text-yellow-500" /> Credits
                     </div>
@@ -95,7 +95,7 @@ export default async function SettingsPage() {
         </Card>
 
         {/* CARD 2: CURRENT PLAN */}
-        <Card className="bg-[#4f39f612] border-2 border-white/10 text-white shadow-xl flex flex-col">
+        <Card className="bg-white/2 border-2 border-white/20 text-white shadow-xl flex flex-col">
           <CardHeader className="pb-4 border-b border-white/5">
             <CardTitle className="flex items-center gap-2 text-lg">
               <CreditCard className="w-5 h-5 text-green-400" /> Subscription
@@ -123,7 +123,7 @@ export default async function SettingsPage() {
           <CardFooter className="pt-6 border-t border-white/5 bg-black/10">
              {/* Razorpay Flow: Redirect to Pricing to buy more or upgrade */}
              <Link href="/#pricing" className="w-full">
-                 <Button className="w-full gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10" variant="outline">
+                 <Button className="w-full gap-2 bg-white/3 hover:bg-white/5 hover:text-white text-white/70 border border-white/10 cursor-pointer" variant="outline">
                      {planName === "Free Tier" ? "Upgrade Plan" : "Buy More Credits"} 
                      <ExternalLink className="w-4 h-4 opacity-50" />
                  </Button>

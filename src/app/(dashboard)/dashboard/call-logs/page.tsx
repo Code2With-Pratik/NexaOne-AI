@@ -38,14 +38,14 @@ export default function CallLogsPage() {
   if (loading) return <div className="h-full flex items-center justify-center text-white"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="p-4 md:p-8 h-full w-full bg-[#050505] overflow-y-auto">
+    <div className="p-4 md:p-8 h-full w-full overflow-y-auto">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-2">Call Logs</h1>
         <p className="text-white/50 mb-8">Recent voice and video call history.</p>
         
         <div className="space-y-3">
           {logs.length === 0 ? (
-            <div className="text-center py-20 bg-white/5 rounded-2xl border border-white/10">
+            <div className="text-center py-20 bg-white/2 rounded-2xl border border-white/10">
                <Phone className="w-12 h-12 text-white/20 mx-auto mb-4" />
                <p className="text-white/50">No recent calls found.</p>
             </div>
@@ -80,7 +80,7 @@ export default function CallLogsPage() {
               }
 
               return (
-                <div key={log.id} className="bg-white/5 p-4 rounded-xl flex items-center justify-between hover:bg-white/10 transition border border-white/5 group">
+                <div key={log.id} className="bg-white/5 p-4 rounded-xl flex items-center justify-between hover:bg-white/10 transition border-2 border-white/5 group">
                   
                   {/* Left: User Info */}
                   <div className="flex items-center gap-4">

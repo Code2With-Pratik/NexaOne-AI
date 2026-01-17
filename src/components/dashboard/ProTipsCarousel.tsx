@@ -23,7 +23,7 @@ export function ProTipsCarousel() {
   }, []);
 
   return (
-    <div className="w-full flex items-center justify-center py-6 mt-4 relative overflow-hidden rounded-xl border border-white/5 bg-gradient-to-r from-indigo-900/10 via-purple-900/10 to-indigo-900/10">
+    <div className="w-full flex items-center justify-center py-6 mt-4 relative overflow-hidden rounded-xl border border-pink-500/40 bg-gradient-to-r from-pink-900/10 via-pink-900/20 to-indigo-900/10">
       {/* Background Glow */}
       <div className="absolute border-2 border-white/15 inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse opacity-50" />
       
