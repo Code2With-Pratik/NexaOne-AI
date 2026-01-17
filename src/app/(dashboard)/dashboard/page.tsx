@@ -6,9 +6,10 @@ import { format } from "date-fns";
 import { 
   History, 
   Sparkles, 
-  MessageSquare, 
+  MessageSquare,
+  Bot, 
   ImageIcon, 
-  VideoIcon, 
+  Type, 
   PenTool, 
   Search, 
   Mail, 
@@ -25,12 +26,12 @@ import FeedbackForm from "@/components/dashboard/FeedbackForm";
 
 // --- CONFIGURATION ---
 const tools = [
-  { label: "AI Chatbot", icon: MessageSquare, color: "text-violet-500", bgColor: "bg-violet-500/10", href: "/dashboard/ai-tools/assistant" },
-  { label: "Image Generator", icon: ImageIcon, color: "text-pink-700", bgColor: "bg-pink-700/10", href: "/dashboard/ai-tools/image-generator" },
-  { label: "Caption Generator", icon: VideoIcon, color: "text-orange-700", bgColor: "bg-orange-700/10", href: "/dashboard/ai-tools/social-caption" },
+  { label: "AI Assistant", icon: Bot, color: "text-violet-500", bgColor: "bg-violet-500/10", href: "/dashboard/ai-tools/assistant" },
+  { label: "Image Generator", icon: ImageIcon, color: "text-pink-500", bgColor: "bg-pink-700/10", href: "/dashboard/ai-tools/image-generator" },
+  { label: "Caption Generator", icon: Type, color: "text-orange-500", bgColor: "bg-orange-700/10", href: "/dashboard/ai-tools/social-caption" },
   { label: "Article Writer", icon: PenTool, color: "text-emerald-500", bgColor: "bg-emerald-500/10", href: "/dashboard/ai-tools/article-writer" },
-  { label: "Email Generator", icon: Mail, color: "text-green-700", bgColor: "bg-green-700/10", href: "/dashboard/ai-tools/email-generator" },
-  { label: "Search Engine", icon: Search, color: "text-blue-500", bgColor: "bg-blue-500/10", href: "/dashboard/ai-tools/search-engine" }
+  { label: "Email Generator", icon: Mail, color: "text-yellow-500", bgColor: "bg-green-700/10", href: "/dashboard/ai-tools/email-generator" },
+  { label: "Search Engine", icon: Search, color: "text-cyan-500", bgColor: "bg-blue-500/10", href: "/dashboard/ai-tools/search-engine" }
 ];
 
 const proTips = [
@@ -75,7 +76,7 @@ export default async function DashboardPage() {
       
       {/* 1. HERO SECTION */}
       <div className="space-y-4 text-center pt-8 px-4">
-        <h2 className="text-3xl md:text-5xl font-bold text-white text-center">
+        <h2 className="text-3xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 text-center">
           Unleash your creative power
         </h2>
         <p className="text-white/60 font-light text-sm md:text-lg text-center max-w-2xl mx-auto">
@@ -90,7 +91,7 @@ export default async function DashboardPage() {
             <Link
               key={tool.href}
               href={tool.href}
-              className="p-4 border border-white/10 flex items-center justify-between rounded-xl hover:shadow-md hover:bg-white/5 transition cursor-pointer group bg-black/20"
+              className="p-4 border-1 border-pink-500/50 flex items-center justify-between rounded-xl hover:shadow-md hover:bg-pink-600/20 transition cursor-pointer group bg-black/20"
             >
               <div className="flex items-center gap-x-4">
                 <div className={cn("p-2 w-fit rounded-md", tool.bgColor)}>
@@ -112,10 +113,10 @@ export default async function DashboardPage() {
           <div className="space-y-8">
              
              {/* History Section */}
-             <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+             <div className="bg-[#0000003d] border border-pink-500/50 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
-                    <History className="w-5 h-5 text-indigo-400" />
-                    <h3 className="text-lg font-bold text-white">Recent Generations</h3>
+                    <History className="w-5 h-5 text-pink-400 lg:ml-30" />
+                    <h3 className="text-lg font-bold text-white whitespace-nowrap">Recent Generations</h3>
                 </div>
                 
                 <div className="space-y-3">
@@ -126,13 +127,13 @@ export default async function DashboardPage() {
                                 <div className="flex flex-col gap-1 overflow-hidden">
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-bold text-white">{item.tool}</span>
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center gap-1">
+                                        <span className="text-[15px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-red-500 border border-yellow-500/20 flex items-center gap-1">
                                             <Zap className="w-2 h-2" /> -{getCreditCost(item.tool)}
                                         </span>
                                     </div>
                                     <p className="text-xs text-white/60 truncate w-56 md:w-80">"{item.query}"</p>
                                 </div>
-                                <span className="text-[10px] text-white/40 whitespace-nowrap pt-1">
+                                <span className="text-[12px] text-white/50 whitespace-nowrap pt-1">
                                     {format(item.createdAt, "MMM d, h:mm a")}
                                 </span>
                             </div>
@@ -142,16 +143,16 @@ export default async function DashboardPage() {
              </div>
 
              {/* Queries Section */}
-             <div className="bg-[#111827] border border-white/10 rounded-2xl p-6">
+             <div className="bg-[#0000003d] border border-pink-500/50 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-6">
-                    <MessageSquare className="w-5 h-5 text-pink-400" />
+                    <MessageSquare className="w-5 h-5 text-pink-500 lg:ml-30" />
                     <h3 className="text-lg font-bold text-white">My Support Queries</h3>
                 </div>
                 
                 <div className="space-y-4">
                     {queries.length === 0 && <p className="text-white/30 text-sm">No queries sent.</p>}
                     {queries.map((q) => (
-                        <div key={q.id} className="p-4 rounded-lg bg-black/20 border border-white/5 flex flex-col gap-3">
+                        <div key={q.id} className="p-4 rounded-lg bg-black/20 border border-white/10 flex flex-col gap-3">
                             {/* Header: Subject & Status */}
                             <div className="flex items-start justify-between">
                                 <div>
@@ -172,10 +173,10 @@ export default async function DashboardPage() {
 
                             {/* Admin Reply (Conditional) */}
                             {q.adminReply && (
-                                <div className="mt-1 bg-white/5 rounded p-3 border-l-2 border-indigo-500">
+                                <div className="mt-1 bg-white/5 rounded p-3 border-l-2 border-pink-500">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <CornerDownRight className="w-3 h-3 text-indigo-400" />
-                                        <span className="text-xs font-bold text-indigo-300">Admin Reply</span>
+                                        <CornerDownRight className="w-3 h-3 text-pink-400" />
+                                        <span className="text-xs font-bold text-pink-500">Admin Reply</span>
                                     </div>
                                     <p className="text-xs text-white/80 leading-relaxed">
                                         "{q.adminReply}"
@@ -196,12 +197,12 @@ export default async function DashboardPage() {
               </div>
 
               {/* Pro Tip Card */}
-              <div className="bg-gradient-to-r from-blue-900/20 to-cyan-900/20 border border-white/10 rounded-xl p-5 flex items-start gap-4 shadow-lg">
-                <div className="p-2 bg-blue-500/20 rounded-full shrink-0 mt-1">
-                    <Sparkles className="w-5 h-5 text-blue-300 animate-pulse" />
+              <div className="bg-[#0000003d] border border-pink-500/50 rounded-xl p-5 flex items-start gap-4 shadow-lg">
+                <div className="p-4 bg-white/5 rounded-full shrink-0 mt-1">
+                    <Sparkles className="w-5 h-5 text-pink-400 animate-pulse" />
                 </div>
                 <div>
-                    <span className="font-bold text-blue-200 block mb-1">Daily Pro Tip:</span> 
+                    <span className="font-bold text-pink-500 block mb-1">Daily Pro Tip:</span> 
                     <p className="text-sm text-white/80 leading-relaxed">
                         {randomTip}
                     </p>

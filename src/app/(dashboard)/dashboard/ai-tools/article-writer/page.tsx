@@ -7,7 +7,7 @@ import { PenTool, Copy, FileText, Check, Loader2, Download } from "lucide-react"
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 import { ProModal } from "@/components/pro-modal";
-import { useReactToPrint } from "react-to-print"; // 1. Import the new library
+import { useReactToPrint } from "react-to-print"; 
 
 export default function ArticleWriterPage() {
   const router = useRouter();
@@ -59,11 +59,9 @@ export default function ArticleWriterPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // --- 2. NEW: ROBUST PDF PRINT FUNCTION ---
-  // This uses the browser's native print dialog to save as PDF.
-  // It handles ALL modern CSS (Tailwind, Gradients, Lab colors) perfectly.
+  // --- PDF PRINT FUNCTION ---
   const handleDownloadPDF = useReactToPrint({
-    contentRef: contentRef, // Pass the Ref directly
+    contentRef: contentRef, 
     documentTitle: `Article-${Date.now()}`,
     onBeforeGetContent: () => {
       if (!generatedText) {
@@ -87,14 +85,26 @@ export default function ArticleWriterPage() {
 
       {/* LEFT: Configuration */}
       <div className="w-full md:w-96 space-y-6">
-        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-6 shadow-xl backdrop-blur-sm">
+        
+        {/* 👇 NEW HEADER SECTION ADDED HERE */}
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500">
+            <PenTool className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Article Writer</h1>
+            <p className="text-white/50 text-sm">Generate SEO-optimized content in seconds.</p>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl border border-white/10 space-y-6 shadow-xl">
            
            {/* Topic Input */}
            <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Article Topic</label>
             <input 
               type="text" 
-              className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500 placeholder:text-white/20 transition-colors"
+              className="w-full border border-white/15 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500 placeholder:text-white/20 transition-colors"
               placeholder="e.g. The Future of EV Cars"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -106,7 +116,7 @@ export default function ArticleWriterPage() {
              <div className="space-y-2">
                 <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Tone</label>
                 <select 
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500 [&>option]:bg-gray-900"
+                  className="w-full  border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-orange-500 [&>option]:bg-black"
                   value={tone}
                   onChange={(e) => setTone(e.target.value)}
                   disabled={isGenerating}
@@ -155,7 +165,7 @@ export default function ArticleWriterPage() {
       </div>
 
       {/* RIGHT: Output Editor */}
-      <div className="flex-1 rounded-2xl bg-black/20 border border-white/10 flex flex-col overflow-hidden shadow-2xl backdrop-blur-sm">
+      <div className="flex-1 rounded-2xl  border-2 border-white/10 flex flex-col overflow-hidden shadow-2xl">
         
         {/* Toolbar */}
         <div className="h-14 border-b border-white/10 flex items-center justify-between px-4 bg-black/40 shrink-0">
@@ -190,18 +200,13 @@ export default function ArticleWriterPage() {
         {/* Text Area */}
         <div className="flex-1 p-8 overflow-y-auto custom-scrollbar text-white/90">
            
-           {/* 3. PRINT STYLES 
-              We use a simple white container. The browser print engine will handle the rest.
-              We add a 'print:text-black' class just in case you use Tailwind print modifiers.
-           */}
            <div 
              ref={contentRef} 
-             className="max-w-none p-10 rounded-lg bg-white text-black min-h-full"
+             className="max-w-none p-10 rounded-lg text-white min-h-full"
            > 
              {generatedText ? (
                <ReactMarkdown
                 components={{
-                  // Standard clean styles for the PDF
                   h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-blue-600 mb-6 mt-2 border-b border-gray-200 pb-4" {...props} />,
                   h2: ({node, ...props}) => <h2 className="text-2xl font-semibold text-orange-600 mt-8 mb-4" {...props} />,
                   h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-amber-600 mt-6 mb-3" {...props} />,
@@ -216,14 +221,12 @@ export default function ArticleWriterPage() {
                {generatedText}
              </ReactMarkdown>
              ) : (
-                // This empty state is hidden from print usually, but we keep it clean.
-                // We use inline styles here to force transparency on screen but keep structure.
-               <div className="h-full flex flex-col items-center justify-center min-h-[400px]" style={{ backgroundColor: "#111827" }}>
-                  <div className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                      <PenTool className="w-10 h-10 opacity-50 text-white" />
+               <div className="h-full flex flex-col items-center justify-center min-h-[400px]">
+                  <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                      <PenTool className="w-10 h-10 opacity-60 text-orange-500" />
                   </div>
                   <p className="text-lg font-medium text-white">Ready to write</p>
-                  <p className="text-sm text-gray-400">Enter a topic and settings to begin.</p>
+                  <p className="text-sm text-white/40">Enter a topic and settings to begin.</p>
                </div>
              )}
            </div>

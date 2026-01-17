@@ -107,14 +107,14 @@ export const Sidebar = ({
       {isSidebarOpen && (
         <div 
           onClick={() => useAppStore.setState({ isSidebarOpen: false })}
-          className="md:hidden fixed inset-0 bg-black/60 z-30 backdrop-blur-sm transition-opacity"
+          className="md:hidden fixed inset-0 bg-black/10 z-30 backdrop-blur-sm transition-opacity"
         />
       )}
 
       {/* Main Sidebar */}
       <aside 
         className={cn(
-          "h-screen bg-[#111827] border-r border-white/10 flex flex-col fixed left-0 top-0 z-40 transition-all duration-300 ease-in-out",
+          "h-screen bg-[#00000050] border-r border-white/10 flex flex-col fixed left-0 top-0 z-40 transition-all duration-300 ease-in-out",
           isSidebarOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0 md:w-20"
         )}
       >
@@ -127,7 +127,7 @@ export const Sidebar = ({
             href="/" 
             className="flex items-center overflow-hidden hover:opacity-80 transition-opacity"
           >
-            <div className="relative w-8 h-8 shrink-0">
+            <div className="relative w-8 h-8 shrink-0 mt-1">
                <Image 
                  src="/favicon.ico" 
                  alt="Logo" 
@@ -136,7 +136,7 @@ export const Sidebar = ({
                />
             </div>
             <span className={cn("font-bold text-lg text-white ml-3 whitespace-nowrap transition-opacity duration-200", !isSidebarOpen && "hidden opacity-0")}>
-              NexaOne <span className="text-indigo-400">AI</span>
+              NexaOne <span className="text-pink-400">AI</span>
             </span>
           </Link>
           {/* 👆 END UPDATED SECTION */}
@@ -183,7 +183,7 @@ export const Sidebar = ({
                     title={!isSidebarOpen ? item.name : undefined}
                   >
                     <div className="flex items-center gap-3">
-                      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isChildActive(item) ? "text-indigo-400" : item.color)} />
+                      <item.icon className={cn("w-5 h-5 shrink-0 transition-colors", isChildActive(item) ? "text-pink-400" : item.color)} />
                       {isSidebarOpen && <span className="text-sm font-medium">{item.name}</span>}
                     </div>
                     {isSidebarOpen && (
@@ -201,7 +201,7 @@ export const Sidebar = ({
                           onClick={handleLinkClick}
                           className={cn(
                             "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all cursor-pointer",
-                            isActive(sub.href) ? "bg-indigo-600 text-white shadow-lg" : "text-white/50 hover:text-white hover:bg-white/5"
+                            isActive(sub.href) ? "bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg" : "text-white/50 hover:text-white hover:bg-white/5"
                           )}
                         >
                           <sub.icon className={cn("w-4 h-4", isActive(sub.href) ? "text-white" : sub.color)} />
@@ -218,7 +218,7 @@ export const Sidebar = ({
                   className={cn(
                     "flex items-center px-3 py-2.5 rounded-xl transition-all duration-200 group mb-1 cursor-pointer",
                     !isSidebarOpen && "justify-center",
-                    isActive(item.href!) ? "bg-indigo-600 text-white shadow-lg" : "text-white/60 hover:bg-white/5 hover:text-white"
+                    isActive(item.href!) ? "bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg" : "text-white/60 hover:bg-white/5 hover:text-white"
                   )}
                   title={!isSidebarOpen ? item.name : undefined}
                 >
@@ -235,7 +235,7 @@ export const Sidebar = ({
           <button 
             onClick={() => signOut({ redirectUrl: '/' })}
             className={cn(
-              "flex items-center w-full rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors group cursor-pointer",
+              "flex items-center w-full rounded-xl font-bold text-red-500 hover:bg-red-500/80 hover:text-white transition-colors group cursor-pointer",
               isSidebarOpen ? "px-3 py-2.5 gap-3" : "justify-center py-3"
             )}
             title="Sign Out"

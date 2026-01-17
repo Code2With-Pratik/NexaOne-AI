@@ -47,8 +47,8 @@ export default function DashboardClient({
 
           <div className="flex items-center gap-4">
               {/* CREDIT DISPLAY */}
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-mono font-bold shadow-[0_0_10px_-3px_rgba(99,102,241,0.4)]">
-                <Zap className="w-3.5 h-3.5 fill-indigo-300" />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 bg-pink-500/10 text-yellow-400 text-xs font-mono font-bold shadow-[0_0_10px_-3px_rgba(99,102,241,0.4)]">
+                <Zap className="w-3.5 h-3.5 fill-orange-500" />
                 {creditBalance} Credits
               </div>
               

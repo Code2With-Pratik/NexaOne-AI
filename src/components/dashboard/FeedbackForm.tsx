@@ -32,7 +32,7 @@ export default function FeedbackForm() {
   };
 
   return (
-    <div className="w-full bg-[#111827] border border-white/10 rounded-2xl p-6 shadow-xl h-full">
+    <div className="w-full bg-[#0000003d] border border-pink-500/50 rounded-2xl p-6 shadow-xl h-full">
       <h3 className="text-xl font-bold text-white mb-2">Share your experience</h3>
       <p className="text-white/50 text-sm mb-6">
         Your feedback helps us improve. Rated comments will be featured on our homepage!
@@ -69,12 +69,12 @@ export default function FeedbackForm() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Tell us what you liked..."
-            className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500 resize-none transition-all"
+            className="w-full h-32 bg-black/20 border border-white/10 rounded-xl p-4 text-white placeholder:text-white/30 focus:outline-none focus:border-pink-500 resize-none transition-all"
           />
 
           <button
             disabled={loading || rating === 0 || !message.trim()}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-white/10 disabled:text-white/30 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20"
+            className="w-full py-3 bg-gradient-to-r from-pink-600 to-pink-500 hover:bg-pink-500/60 disabled:bg-white/10 cursor-pointer text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4" /> Submit Feedback</>}
           </button>

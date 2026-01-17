@@ -35,8 +35,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (isMaintenanceMode && !isUserAdmin) {
      return (
-        <div className="h-screen flex flex-col items-center justify-center bg-[#0b0f19] text-white p-4 relative overflow-hidden">
-             <div className="absolute inset-0 bg-indigo-500/10 blur-[100px]" />
+        <div className="h-screen flex flex-col items-center justify-center text-white p-4 relative overflow-hidden">
+             <div className="absolute inset-0 bg-black/10 blur-[100px]" />
              <div className="z-10 text-center space-y-6 max-w-lg">
                 <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto animate-pulse">
                     <span className="text-4xl">🚧</span>
@@ -46,7 +46,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
                     NexaOne AI is currently being upgraded. We will be back online in 24-48 hours.
                 </p>
                 <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-sm font-mono text-indigo-300">Status: Deploying Pro Features...</p>
+                    <p className="text-sm font-mono text-red-500">Status: Deploying Pro Features...</p>
                 </div>
              </div>
         </div>

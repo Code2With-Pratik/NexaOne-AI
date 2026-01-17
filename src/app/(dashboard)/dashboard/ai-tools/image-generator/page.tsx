@@ -2,11 +2,11 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation"; // 1. Import Router for credit refresh
+import { useRouter } from "next/navigation"; 
 import { Download, Sparkles, Image as ImageIcon, Maximize2, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ProModal } from "@/components/pro-modal"; // 2. Import Pro Modal
-import { toast } from "sonner"; // 3. Use Toast instead of alert
+import { ProModal } from "@/components/pro-modal"; 
+import { toast } from "sonner"; 
 
 // Helper to download base64 images
 const downloadImage = (url: string, filename: string) => {
@@ -29,7 +29,7 @@ const THEMES = [
 ];
 
 export default function ImageGeneratorPage() {
-  const router = useRouter(); // Initialize router
+  const router = useRouter(); 
 
   // --- STATE ---
   const [prompt, setPrompt] = useState("");
@@ -79,7 +79,7 @@ export default function ImageGeneratorPage() {
   return (
     <div className="bg-transparent max-w-6xl mx-auto h-[calc(100vh-8rem)] flex flex-col md:flex-row gap-6">
       
-      {/* 👇 1. ADD THE PRO MODAL HERE */}
+      {/* PRO MODAL */}
       <ProModal 
         isOpen={proModalOpen} 
         onClose={() => setProModalOpen(false)} 
@@ -87,13 +87,26 @@ export default function ImageGeneratorPage() {
 
       {/* LEFT: Controls */}
       <div className="w-full md:w-80 space-y-6">
-        <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-6 shadow-xl backdrop-blur-sm">
+        
+        {/* 👇 HEADER ADDED HERE */}
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-xl bg-indigo-500/10 text-pink-500">
+            <ImageIcon className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Image Generator</h1>
+            <p className="text-white/50 text-sm">Turn your text into stunning visual art.</p>
+          </div>
+        </div>
+
+        {/* Control Box */}
+        <div className="p-6 rounded-2xl border border-white/10 space-y-6 shadow-xl">
           
           {/* Prompt Input */}
           <div className="space-y-2">
             <label className="text-xs uppercase tracking-wider text-white/50 font-semibold">Prompt</label>
             <textarea 
-              className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500 resize-none placeholder:text-white/20 transition-colors"
+              className="w-full h-32 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-pink-500 resize-none placeholder:text-white/20 transition-colors"
               placeholder="A futuristic cyberpunk city with neon lights..."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -113,7 +126,7 @@ export default function ImageGeneratorPage() {
                   className={cn(
                     "py-2 rounded-lg text-xs font-medium border transition-all cursor-pointer",
                     theme === t.value
-                      ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                      ? "bg-pink-600 border-pink-500 text-white shadow-lg shadow-indigo-500/20" 
                       : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                   )}
                 >
@@ -127,7 +140,7 @@ export default function ImageGeneratorPage() {
           <button 
             onClick={handleGenerate}
             disabled={!prompt || isGenerating}
-            className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold cursor-pointer text-sm hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-500 via-pink-500 to-pink-600 text-white font-bold cursor-pointer text-sm hover:opacity-90 transition-all disabled:opacity-80 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
           >
             {isGenerating ? (
                <Loader2 className="w-4 h-4 animate-spin" />
@@ -140,35 +153,35 @@ export default function ImageGeneratorPage() {
         </div>
 
         {/* Credit Info */}
-        <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs text-center">
+        <div className="p-4 rounded-xl border border-white/10 text-pink-500 text-xs text-center">
           Generation costs <span className="font-bold">5 Credits</span>. <br/>
           (High Quality Mode Active)
         </div>
       </div>
 
       {/* RIGHT: Output Gallery */}
-      <div className="flex-1 rounded-2xl bg-black/20 border border-white/10 p-1 overflow-hidden flex flex-col items-center justify-center min-h-[400px] relative backdrop-blur-sm">
-         
-         {isGenerating && (
-           <div className="flex flex-col items-center justify-center text-white/40 animate-pulse">
+      <div className="flex-1 rounded-2xl border border-white/10 p-1 overflow-hidden flex flex-col items-center justify-center min-h-[400px] relative">
+          
+          {isGenerating && (
+            <div className="flex flex-col items-center justify-center text-white/40 animate-pulse">
               <div className="w-16 h-16 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mb-4" />
               <p>Creating masterpiece...</p>
-           </div>
-         )}
+            </div>
+          )}
 
-         {!isGenerating && images.length === 0 && (
-           <div className="text-center text-white/30">
+          {!isGenerating && images.length === 0 && (
+            <div className="text-center text-white/30">
               <ImageIcon className="w-16 h-16 mx-auto mb-4 opacity-50" />
               <p>Enter a prompt to start generating.</p>
-           </div>
-         )}
+            </div>
+          )}
 
-         {/* Display Result */}
-         {images.map((src, i) => (
-           <div 
-            key={i} 
-            className="relative group w-full h-full rounded-xl overflow-hidden shadow-2xl focus:outline-none"
-           >
+          {/* Display Result */}
+          {images.map((src, i) => (
+            <div 
+             key={i} 
+             className="relative group w-full h-full rounded-xl overflow-hidden shadow-2xl focus:outline-none"
+            >
               <img src={src} alt="Generated" className="w-full h-full object-contain bg-black/50" />
               
               {/* Overlay Actions */}
@@ -195,22 +208,22 @@ export default function ImageGeneratorPage() {
                      <Maximize2 className="w-5 h-5" />
                   </button>
               </div>
-           </div>
-         ))}
+            </div>
+          ))}
       </div>
 
       {/* --- LIGHTBOX MODAL (Full Screen View) --- */}
       {selectedImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
-           
-           <button 
-             onClick={() => setSelectedImage(null)}
-             className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50 cursor-pointer"
-           >
-             <X className="w-6 h-6" />
-           </button>
+            
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 md:top-8 md:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-50 cursor-pointer"
+            >
+              <X className="w-6 h-6" />
+            </button>
 
-           <div className="relative w-full h-full max-w-7xl max-h-[90vh] flex flex-col items-center justify-center">
+            <div className="relative w-full h-full max-w-7xl max-h-[90vh] flex flex-col items-center justify-center">
               <img 
                 src={selectedImage} 
                 alt="Full Screen" 
@@ -225,7 +238,7 @@ export default function ImageGeneratorPage() {
                     <Download className="w-5 h-5" /> Download Original
                  </button>
               </div>
-           </div>
+            </div>
         </div>
       )}
 

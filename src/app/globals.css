@@ -13,6 +13,31 @@
   .pointer-events-none-wrapper > * {
     pointer-events: auto;
   }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 12px;               /* Vertical width */
+    height: 6px;              /* Horizontal height */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;  /* Transparent track for glass effect */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #b60055d0;      /* Indigo-600 (Matches Bot Icon) */
+    border-radius: 10px;      /* Rounded pill shape */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #f4007a95;      /* Pink-500 (Matches Sparkles/User Icon) */
+    cursor: grab;
+  }
+
+  /* Firefox Support */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #d400837c transparent;
+  }
 }
 
 /* We removed the complex background-image properties here.
