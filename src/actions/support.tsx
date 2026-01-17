@@ -6,7 +6,9 @@ import { revalidatePath } from "next/cache";
 
 // 1. USER: Create a new ticket (Contact Form)
 export async function createTicket(formData: FormData) {
-  const { userId } = auth();
+  // FIX: Add 'await' here
+  const { userId } = await auth();
+  
   if (!userId) throw new Error("Must be logged in");
 
   const subject = formData.get("subject") as string;
@@ -14,24 +16,27 @@ export async function createTicket(formData: FormData) {
 
   await db.supportTicket.create({
     data: {
-      userId: userId, // Uses Clerk ID
+      userId: userId, 
       subject,
       message,
       status: "PENDING"
     }
   });
 
-  revalidatePath("/dashboard"); // Refresh dashboard so they see the new ticket
+  revalidatePath("/dashboard"); 
   return { success: true };
 }
 
 // 2. ADMIN: Reply and Update Status
 export async function adminReplyTicket(ticketId: string, reply: string, status: "RESOLVED" | "REJECTED" | "IN_PROGRESS") {
-  // Security check
-  const { userId } = auth();
+  // FIX: Add 'await' here too
+  const { userId } = await auth();
+  
   if (!userId) throw new Error("Unauthorized");
   
   const user = await db.user.findUnique({ where: { clerkId: userId } });
+  
+  // Optional: Check if user exists before checking role to avoid crashes
   if (!user || user.role !== "ADMIN") throw new Error("Admin only");
 
   // Update the ticket
