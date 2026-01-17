@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, MoreVertical, Send, Paperclip, Mic, Smile, CheckCheck,
-  Trash2, BellOff, Bell, Pin, PinOff, X, StopCircle, Sticker, ArrowLeft, FileText, Download, AudioLines
+  Trash2, BellOff, Bell, Pin, PinOff, ArrowLeft, FileText, Download, Sticker
 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import EmojiPicker from "emoji-picker-react";
@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import CallOverlay1on1 from "@/components/calls/CallOverlay1on1";
 import { useSocket } from "@/providers/SocketProvider";
+// 👇 IMPORT THE NEW COMPONENT
+import VoiceMessage from "@/components/chat/VoiceMessage"; 
 
 // --- TYPES ---
 type MessageType = "text" | "image" | "voice" | "sticker" | "file";
@@ -278,8 +280,8 @@ export default function ChatPage() {
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
-             const base64Audio = reader.result as string;
-             sendMessagePayload(base64Audio, "voice");
+              const base64Audio = reader.result as string;
+              sendMessagePayload(base64Audio, "voice");
         };
       };
 
@@ -291,17 +293,15 @@ export default function ChatPage() {
     }
   };
 
-  // 👇 NEW: Cancel Recording (Discard)
   const cancelRecording = () => {
       if (mediaRecorderRef.current && isRecording) {
-          mediaRecorderRef.current.onstop = null; // Prevent sending
+          mediaRecorderRef.current.onstop = null; 
           mediaRecorderRef.current.stop();
           setIsRecording(false);
           mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       }
   };
 
-  // 👇 NEW: Finish Recording (Send)
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
@@ -359,12 +359,12 @@ export default function ChatPage() {
   const isMuted = mutedIds.includes(activeChatId);
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/40 backdrop-blur-xl shadow-2xl relative">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/10 backdrop-blur-xs shadow-2xl relative">
       
       {/* SIDEBAR */}
-      <div className={cn("w-full md:w-80 h-full border-r border-white/10 flex flex-col bg-black/20", activeChatId ? "hidden md:flex" : "flex")}>
+      <div className={cn("w-full md:w-80 h-full border-r-2 border-white/20 flex flex-col bg-black/20", activeChatId ? "hidden md:flex" : "flex")}>
         <div className="p-4 border-b border-white/10 relative">
-          <Search className="absolute left-7 top-6 w-4 h-4 text-white/40" />
+          <Search className="absolute left-7 top-6 w-4 h-5 text-white/40" />
           <input type="text" placeholder="Search chats..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -378,10 +378,10 @@ export default function ChatPage() {
                    <div className="flex justify-between items-baseline mb-1">
                       <h4 className="font-semibold text-white text-sm flex items-center gap-2">
                         {contact.name}
-                        {pinnedIds.includes(contact.id) && <Pin className="w-3 h-3 text-white/50 rotate-45" />}
-                        {mutedIds.includes(contact.id) && <BellOff className="w-3 h-3 text-white/50" />}
+                        {pinnedIds.includes(contact.id) && <Pin className="w-4 h-4 text-white/50 rotate-45" />}
+                        {mutedIds.includes(contact.id) && <BellOff className="w-4 h-4 text-white/50" />}
                       </h4>
-                      <span className="text-[10px] text-white/40">{contact.lastSeen || "now"}</span>
+                      <span className="text-[12px] text-white/40">{contact.lastSeen || "now"}</span>
                    </div>
                    <p className={cn("text-xs truncate", contact.lastMessage === "Tap to chat" ? "text-white/30 italic" : "text-white/80 font-medium")}>{contact.lastMessage}</p>
                 </div>
@@ -392,135 +392,175 @@ export default function ChatPage() {
 
       {/* CHAT AREA */}
       <div className={cn("flex-1 flex flex-col bg-transparent h-full relative", !activeChatId ? "hidden md:flex" : "flex")}>
-        {activeChatId ? (
-          <>
-            <div className="h-16 px-4 md:px-6 border-b border-white/10 flex items-center justify-between bg-black/20 z-20">
-              <div className="flex items-center gap-3">
-                 <button onClick={() => setActiveChatId("")} className="md:hidden text-white/60 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
-                 <img src={activeContact.avatar} alt={activeContact.name} className={cn("w-10 h-10 rounded-full object-cover bg-gradient-to-tr", activeContact.color)} />
-                 <div>
-                   <h3 className="font-bold text-white text-base">{activeContact.name}</h3>
-                   <p className={cn("text-xs flex items-center gap-1.5", activeContact.status === "Online" ? "text-green-400" : "text-white/40")}>
-                     {whoIsTyping === activeChatId ? <span className="text-indigo-400 font-bold animate-pulse">Typing...</span> : <>{activeContact.status}</>}
-                   </p>
-                 </div>
+        
+        {/* CALL OVERLAY (Rendered here so it's confined to the chat area) */}
+        {isInCall && callToken ? (
+           <div className="absolute inset-0 z-50 bg-black w-full h-full">
+              <CallOverlay1on1
+                token={callToken}
+                roomName={currentRoomId}
+                onDisconnect={handleLocalDisconnect}
+                initialVideoEnabled={startWithVideo}
+              />
+           </div>
+        ) : (
+          activeChatId ? (
+            <>
+              {/* HEADER */}
+              <div className="h-16 px-4 md:px-6 border-b-2 border-white/20 flex items-center justify-between bg-black/20 z-20">
+                <div className="flex items-center gap-3">
+                   <button onClick={() => setActiveChatId("")} className="md:hidden text-white/60 hover:text-white"><ArrowLeft className="w-5 h-5" /></button>
+                   <img src={activeContact.avatar} alt={activeContact.name} className={cn("w-10 h-10 rounded-full object-cover bg-gradient-to-tr", activeContact.color)} />
+                   <div>
+                     <h3 className="font-bold text-white text-base">{activeContact.name}</h3>
+                     <p className={cn("text-xs flex items-center gap-1.5", activeContact.status === "Online" ? "text-green-400" : "text-white/40")}>
+                       {whoIsTyping === activeChatId ? <span className="text-indigo-400 font-bold animate-pulse">Typing...</span> : <>{activeContact.status}</>}
+                     </p>
+                   </div>
+                </div>
+                <div className="flex items-center gap-1 text-white/60">
+                   <button onClick={() => initiateCall(false)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full cursor-pointer"><Phone className="w-5 h-5" /></button>
+                   <button onClick={() => initiateCall(true)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full cursor-pointer"><Video className="w-5 h-5" /></button>
+                   <div className="relative">
+                     <button onClick={() => setShowChatMenu(!showChatMenu)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full cursor-pointer"><MoreVertical className="w-5 h-5" /></button>
+                     {showChatMenu && (
+                       <div className="absolute top-10 right-0 w-32 bg-[#1a1a1ade] border border-white/10 rounded-xl shadow-2xl z-50 p-1 flex flex-col">
+                         <button onClick={() => handleChatAction("mute")} className="w-full flex items-center justify-start gap-3 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"><BellOff className="w-4 h-4 text-white/50" /><span>{isMuted ? "Unmute" : "Mute"}</span></button>
+                         <button onClick={() => handleChatAction("pin")} className="w-full flex items-center justify-start gap-3 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"><Pin className="w-4 h-4 text-white/50 rotate-45" /><span>{isPinned ? "Unpin" : "Pin"}</span></button>
+                         <button onClick={() => handleChatAction("delete")} className="w-full flex items-center justify-start gap-3 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"><Trash2 className="w-4 h-4 text-red-500" /><span>Delete</span></button>
+                       </div>
+                     )}
+                   </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1 text-white/60">
-                 <button onClick={() => initiateCall(false)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><Phone className="w-5 h-5" /></button>
-                 <button onClick={() => initiateCall(true)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><Video className="w-5 h-5" /></button>
-                 <div className="relative">
-                   <button onClick={() => setShowChatMenu(!showChatMenu)} className="hover:text-white hover:bg-white/10 p-2.5 rounded-full"><MoreVertical className="w-5 h-5" /></button>
-                   {showChatMenu && (
-                     <div className="absolute top-10 right-0 w-56 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl z-50 p-1">
-                       <button onClick={() => handleChatAction("mute")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">{isMuted ? "Unmute" : "Mute"}</button>
-                       <button onClick={() => handleChatAction("pin")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-lg">{isPinned ? "Unpin" : "Pin"}</button>
-                       <button onClick={() => handleChatAction("delete")} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg">Delete</button>
-                     </div>
+
+              {/* MESSAGES */}
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 custom-scrollbar">
+                {activeMessages.map((m, i) => {
+                  const isMe = m.senderId === myRealId;
+                  return (
+                    <React.Fragment key={m.id}>
+                      {(i === 0 || activeMessages[i-1].date !== m.date) && <div className="flex justify-center my-6"><span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">{m.date}</span></div>}
+                      <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                        <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
+                          {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
+                          {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
+                          
+                          {/* 👇 REPLACED AUDIO TAG WITH NEW COMPONENT */}
+                          {m.type === 'voice' && <VoiceMessage src={m.text} isMe={isMe} />}
+                          
+                          {m.type === 'file' && (
+                             <a href={m.text} download={m.fileName || "document"} className="flex items-center gap-3 bg-black/20 p-3 rounded-lg hover:bg-black/30 transition text-white/90 no-underline">
+                                 <div className="bg-white/10 p-2 rounded-lg"><FileText className="w-6 h-6 text-white" /></div>
+                                 <div className="flex-1 min-w-0">
+                                     <p className="font-bold text-sm truncate max-w-[150px]">{m.fileName || "Document"}</p>
+                                     <p className="text-[10px] text-white/50">Click to download</p>
+                                 </div>
+                                 <Download className="w-4 h-4 text-white/50" />
+                             </a>
+                          )}
+
+                          {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
+                          
+                          <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
+                              <span className="text-[10px] font-medium">{m.time}</span>
+                              {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
+                          </div>
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+              {/* INPUT AREA */}
+              <div className="p-4 bg-black/40 border-t border-white/10 relative z-30">
+                 {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
+                 {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1ad8] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
+                 
+                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
+                   
+                   {/* 👇 NEW RECORDING UI */}
+                   {isRecording ? (
+                      <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
+                          {/* Animated Background Glow */}
+                          <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
+
+                          {/* Left: REC Indicator */}
+                          <div className="flex items-center gap-2 pl-4 z-10">
+                              <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
+                              <span className="text-xs font-mono font-bold tracking-widest text-red-500">REC</span>
+                          </div>
+
+                          {/* Center: Live Waveform Animation */}
+                          <div className="flex items-center justify-center gap-1 h-8 flex-1 mx-4">
+                              {[...Array(12)].map((_, i) => (
+                                  <div 
+                                      key={i} 
+                                      className="w-1 bg-red-500 rounded-full opacity-80"
+                                      style={{
+                                          animation: `wave 1s ease-in-out infinite`,
+                                          animationDelay: `${i * 0.1}s`,
+                                          height: '100%' 
+                                      }}
+                                  >
+                                      {/* Inline Keyframes for this specific component */}
+                                      <style jsx>{`
+                                          @keyframes wave {
+                                              0%, 100% { height: 15%; opacity: 0.3; }
+                                              50% { height: 70%; opacity: 1; }
+                                          }
+                                      `}</style>
+                                  </div>
+                              ))}
+                          </div>
+
+                          {/* Right: Actions */}
+                          <div className="flex items-center gap-3 pr-2 z-10">
+                              <button 
+                                  onClick={cancelRecording} 
+                                  className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"
+                              >
+                                  <Trash2 className="w-5 h-5" />
+                              </button>
+                              
+                              <button 
+                                  onClick={stopRecording} 
+                                  className="w-10 h-10 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                              >
+                                  <Send className="w-4 h-4 ml-0.5 fill-current" />
+                              </button>
+                          </div>
+                      </div>
+                   ) : (
+                       /* NORMAL INPUT UI */
+                       <>
+                           <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400 cursor-pointer"><Smile className="w-6 h-6" /></button>
+                           <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400 cursor-pointer"><Sticker className="w-5 h-5" /></button>
+                           <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400 cursor-pointer"><Paperclip className="w-5 h-5" /></button>
+                           
+                           <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
+                           
+                           <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
+                           
+                           {inputText.trim() ? (
+                               <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white cursor-pointer"><Send className="w-4 h-4" /></button>
+                           ) : (
+                               <button onClick={startRecording} className="p-2 rounded-full text-white/50 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"><Mic className="w-5 h-5" /></button>
+                           )}
+                       </>
                    )}
                  </div>
               </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-white/30 flex-col gap-2">
+              <Search className="w-10 h-10 opacity-50" />
+              <p>Select a chat or search for a user to start</p>
             </div>
-
-            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-2 custom-scrollbar bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
-              {activeMessages.map((m, i) => {
-                const isMe = m.senderId === myRealId;
-                return (
-                  <React.Fragment key={m.id}>
-                    {(i === 0 || activeMessages[i-1].date !== m.date) && <div className="flex justify-center my-6"><span className="bg-black/40 border border-white/5 text-white/40 text-[10px] px-3 py-1 rounded-full uppercase tracking-widest font-semibold">{m.date}</span></div>}
-                    <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
-                      <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
-                        {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
-                        {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
-                        {m.type === 'voice' && <audio controls src={m.text} className="h-8 w-48 md:w-60 accent-indigo-500" />}
-                        
-                        {/* FILE RENDER */}
-                        {m.type === 'file' && (
-                            <a href={m.text} download={m.fileName || "document"} className="flex items-center gap-3 bg-black/20 p-3 rounded-lg hover:bg-black/30 transition text-white/90 no-underline">
-                                <div className="bg-white/10 p-2 rounded-lg"><FileText className="w-6 h-6 text-white" /></div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold text-sm truncate max-w-[150px]">{m.fileName || "Document"}</p>
-                                    <p className="text-[10px] text-white/50">Click to download</p>
-                                </div>
-                                <Download className="w-4 h-4 text-white/50" />
-                            </a>
-                        )}
-
-                        {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
-                        
-                        {/* READ RECEIPT */}
-                        <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
-                            <span className="text-[10px] font-medium">{m.time}</span>
-                            {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
-                        </div>
-                      </div>
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-
-            <div className="p-4 bg-black/40 border-t border-white/10 backdrop-blur-md relative z-30">
-               {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme="dark" onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
-               {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1a] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
-               <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner focus-within:border-indigo-500/50 focus-within:bg-white/10 transition-all">
-                  
-                  {/* 👇 NEW: CONDITIONAL RENDER FOR RECORDING UI */}
-                  {isRecording ? (
-                      <div className="flex items-center gap-4 w-full bg-[#2a2a2a] p-1.5 rounded-2xl animate-in fade-in slide-in-from-bottom-2 border border-red-500/30">
-                         <div className="flex items-center gap-2 px-3 animate-pulse text-red-500">
-                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-                            <span className="text-xs font-mono font-bold tracking-wider">REC</span>
-                         </div>
-                         
-                         {/* Fake Waveform Animation */}
-                         <div className="flex-1 flex items-center gap-1 h-6 opacity-60">
-                            {[...Array(15)].map((_, i) => (
-                                <div key={i} className="w-1 bg-red-500 rounded-full animate-pulse" style={{ height: `${Math.max(20, Math.random() * 100)}%`, animationDelay: `${i * 0.05}s` }}></div>
-                            ))}
-                         </div>
-
-                         <div className="flex gap-2">
-                             <button onClick={cancelRecording} className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition"><Trash2 className="w-5 h-5" /></button>
-                             <button onClick={stopRecording} className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white shadow-lg shadow-red-600/20 transition"><Send className="w-4 h-4" /></button>
-                         </div>
-                      </div>
-                  ) : (
-                      /* NORMAL INPUT UI */
-                      <>
-                          <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400"><Smile className="w-6 h-6" /></button>
-                          <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400"><Sticker className="w-5 h-5" /></button>
-                          <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400"><Paperclip className="w-5 h-5" /></button>
-                          
-                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
-                          
-                          <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
-                          
-                          {inputText.trim() ? (
-                              <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white"><Send className="w-4 h-4" /></button>
-                          ) : (
-                              <button onClick={startRecording} className="p-2 rounded-full text-white/50 hover:text-red-400 hover:bg-white/5 transition"><Mic className="w-5 h-5" /></button>
-                          )}
-                      </>
-                  )}
-               </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-white/30 flex-col gap-2">
-            <Search className="w-10 h-10 opacity-50" />
-            <p>Select a chat or search for a user to start</p>
-          </div>
+          )
         )}
       </div>
-
-       {isInCall && callToken && (
-         <CallOverlay1on1
-           token={callToken}
-           roomName={currentRoomId}
-           onDisconnect={handleLocalDisconnect}
-           initialVideoEnabled={startWithVideo}
-         />
-       )}
     </div>
   );
 }
