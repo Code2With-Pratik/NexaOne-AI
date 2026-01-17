@@ -83,7 +83,7 @@ export default async function AdminOverviewPage() {
 // Small helper component for cleaner code
 function DashboardCard({ title, value, subtext, icon: Icon, color }: any) {
   return (
-    <Card className="bg-[#1f2937] border-white/10 text-white">
+    <Card className="bg-[#1F2937] border-white/10 text-white">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className={`h-8 w-8 ${color}`} />
