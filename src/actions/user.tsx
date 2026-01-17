@@ -20,17 +20,25 @@ export async function submitTicket(formData: FormData) {
 
 export async function submitTestimonial(rating: number, message: string) {
     const { userId } = await auth();
+
+    // ✅ FIX: We strictly check if userId exists. 
+    // This tells TypeScript "userId is definitely a string from this point on".
+    if (!userId) {
+        throw new Error("Unauthorized");
+    }
+
+    // Now userId is safe to use here
     const user = await db.user.findUnique({ where: { clerkId: userId } });
     
     await db.testimonial.create({
         data: {
-            userId: userId!,
+            userId: userId, 
             name: user?.name || "User",
             avatar: user?.image,
             rating,
             message,
-            isPublic: false // 🔒 Explicitly set to false (Under Review)
+            isPublic: false 
         }
     });
-    revalidatePath("/dashboard/settings"); // Or wherever the form is
+    revalidatePath("/dashboard/settings"); 
 }
