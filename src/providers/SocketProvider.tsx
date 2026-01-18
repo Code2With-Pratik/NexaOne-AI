@@ -29,26 +29,28 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   // Call State
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
-  
-  // 👇 NEW: Reference for the Message Notification Sound
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null);
   
   const router = useRouter();
 
-  // Updated Message Notification State to support 'types' (alert vs message)
   const [msgNotification, setMsgNotification] = useState<{
       senderName: string;
       content: string;
       senderId?: string;
-      type: 'message' | 'alert'; // 👈 Added type
+      type: 'message' | 'alert';
   } | null>(null);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
 
-    const newSocket = io("http://localhost:3000", { transports: ["websocket"] });
+    // 👇 KEY FIX: We pass 'undefined' as the first argument.
+    // This forces Socket.io to connect to the "Current Window URL" automatically.
+    // It works perfectly on both Localhost AND Render without any config.
+    const newSocket = io(undefined, { 
+        transports: ["websocket"],
+        path: "/socket.io", 
+    });
     
-    // 👇 Initialize Notification Sound
     notificationSoundRef.current = new Audio("/sounds/water_drops.mp3");
 
     newSocket.on("connect", () => {
@@ -89,7 +91,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
     });
 
-    // 👇 NEW: Handle 'Call Rejected' Event Globally
     newSocket.on("call_rejected", () => {
         setMsgNotification({
             senderName: "Call Declined",
@@ -101,20 +102,17 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     // --- MESSAGE LISTENER ---
     newSocket.on("receive_message", (msg: any) => {
-        // 1. Play Notification Sound
         if (notificationSoundRef.current) {
             notificationSoundRef.current.currentTime = 0;
             notificationSoundRef.current.play().catch(e => console.warn("Sound blocked:", e));
         }
 
-        // 2. Determine Content Text
         let contentText = msg.text || "New Message";
         if (msg.type === "image") contentText = "📷 Sent an image";
         if (msg.type === "voice") contentText = "🎤 Sent a voice note";
         if (msg.type === "sticker") contentText = "👻 Sent a sticker";
         if (msg.type === "file") contentText = "📎 Sent a file";
 
-        // 3. Show Toast
         setMsgNotification({
             senderName: msg.senderName || "New Message", 
             content: contentText,
@@ -135,7 +133,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [user, isLoaded]);
 
-  // Call Handlers
   const handleAnswer = () => {
     if (!socket || !incomingCall) return;
     if (ringtoneRef.current) { ringtoneRef.current.pause(); ringtoneRef.current = null; }
@@ -168,17 +165,14 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     <SocketContext.Provider value={{ socket, isConnected, onlineUsers }}>
       {children}
 
-      {/* GLOBAL NOTIFICATION TOAST (Messages & Alerts) */}
       {msgNotification && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] animate-in slide-in-from-top-5 fade-in duration-300">
               <div 
                 className="bg-[#1a1a1a]/90 backdrop-blur-md border border-white/10 px-4 py-3 rounded-full shadow-2xl flex items-center gap-3 min-w-[300px] max-w-md cursor-pointer hover:bg-white/5 transition"
                 onClick={() => {
-                    // Only redirect if it's a message, not a system alert
                     if (msgNotification.type === 'message') router.push('/dashboard/chat');
                 }}
               >
-                  {/* Icon changes color based on type */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msgNotification.type === 'alert' ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
                       {msgNotification.type === 'alert' ? (
                           <Bell className="w-4 h-4 text-red-500" />
@@ -202,7 +196,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
           </div>
       )}
 
-      {/* GLOBAL CALL POPUP */}
       {incomingCall && (
          <div className="fixed bottom-6 right-6 z-[9999] bg-[#1a1a1a] p-5 rounded-2xl shadow-2xl border border-white/10 flex flex-col items-center gap-4 w-80 animate-in slide-in-from-bottom-10">
              <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center animate-bounce">
