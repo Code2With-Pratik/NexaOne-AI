@@ -6,9 +6,10 @@ import { dark } from '@clerk/themes';
 import "./globals.css";
 import { StarBackground } from "@/components/ui/StarBackground";
 import "@livekit/components-styles";
-
-// 👇 1. Import the SocketProvider
 import { SocketProvider } from "@/providers/SocketProvider";
+
+// 👇 1. Import the new component
+import SmoothScrolling from "@/components/SmoothScrolling";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,12 +33,16 @@ export default function RootLayout({
         }
       }}
     >
-      <html lang="en" className="scroll-smooth">
+      {/* 👇 2. Removed 'scroll-smooth' (Let Lenis handle the scrolling) */}
+      <html lang="en"> 
         <body className={`${inter.className} antialiased text-white`}>
+          
+          {/* 👇 3. Add the Smooth Scroll Engine here */}
+          <SmoothScrolling />
+
           <AuthSync />
           <StarBackground />
           
-          {/* 👇 2. Wrap the content with SocketProvider */}
           <SocketProvider>
             <div className="relative z-10">
                {children}
