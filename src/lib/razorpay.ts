@@ -7,13 +7,13 @@ export const razorpay = new Razorpay({
 
 export const PLANS = {
   PRO: {
-    name: "Pro Plan",
-    price: 2900, // ₹29.00 (in paise)
+    name: "Creator Plan",
+    price: 29900, // 👈 FIXED: ₹299.00 (was 2900/₹29)
     credits: 1500
   },
   ULTRA: {
-    name: "Ultra Plan",
-    price: 9900, // ₹99.00 (in paise)
+    name: "Agency Plan",
+    price: 99900, // 👈 FIXED: ₹999.00 (was 9900/₹99)
     credits: 10000
   }
-}; 
+};

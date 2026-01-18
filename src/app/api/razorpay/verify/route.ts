@@ -45,9 +45,10 @@ export async function POST(req: NextRequest) {
     // 5. Create Transaction Record
     await db.transaction.create({
         data: {
-            userId: userId, // Relation references clerkId
-            amount: planType === "PRO" ? 2900 : 9900,
-            credits: creditsToAdd, // In Transaction model, it IS called 'credits'
+            userId: userId, 
+            // 👇 FIXED: Updated to match the real prices (29900 and 99900)
+            amount: planType === "PRO" ? 29900 : 99900, 
+            credits: creditsToAdd, 
             planName: planType,
             status: "SUCCESS",
             razorpayPaymentId: razorpay_payment_id,
