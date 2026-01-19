@@ -64,7 +64,31 @@ const formatDateLabel = (dateString: string) => {
   if (now.getTime() - msgDate.getTime() < 7 * 24 * 60 * 60 * 1000) return date.toLocaleDateString([], { weekday: 'long' });
   return date.toLocaleDateString();
 };
+
 const getDirectRoomId = (id1: string, id2: string) => { return [id1, id2].sort().join('-'); };
+
+// 👇 NEW: Helper to detect URLs and render them as clickable links
+const renderMessageWithLinks = (text: string) => {
+  const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/g;
+  return text.split(urlRegex).map((part, index) => {
+    if (part.match(urlRegex)) {
+      const href = part.startsWith("www.") ? `https://${part}` : part;
+      return (
+        <a
+          key={index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-400 hover:underline break-all relative z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
 
 export default function ChatPage() {
   const { user } = useUser();
@@ -100,7 +124,7 @@ export default function ChatPage() {
   // Call Status Logic for Popup
   const [callStatusPopup, setCallStatusPopup] = useState<"rejected" | "busy" | "timeout" | null>(null);
 
-  // 👇 NEW: Ref to track if call is accepted (Solves the auto-disconnect bug)
+  // Ref to track if call is accepted
   const isCallAcceptedRef = useRef(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -208,7 +232,6 @@ export default function ChatPage() {
     };
 
     const handleCallAccepted = async ({ roomId }: any) => { 
-        // 👇 FIX: Mark call as accepted so timeout doesn't kill it
         isCallAcceptedRef.current = true;
         await joinLiveKitRoom(roomId); 
     };
@@ -222,7 +245,6 @@ export default function ChatPage() {
 
     const handleCallSuccess = ({ logId }: any) => { setCurrentLogId(logId); };
     
-    // Handle Rejection with Popup
     const handleCallRejected = () => { 
         setIsInCall(false); 
         setCallToken(""); 
@@ -264,20 +286,17 @@ export default function ChatPage() {
     const roomId = getDirectRoomId(user.id, activeChatId);
     setStartWithVideo(isVideo);
     
-    // 👇 Reset acceptance status before dialing
     isCallAcceptedRef.current = false;
 
     socket.emit("outgoing_call", { callerId: user.id, calleeId: activeChatId, callerName: user.fullName, isVideo, roomId });
     await joinLiveKitRoom(roomId);
     
-    // 👇 FIX: Timeout logic checks the Ref instead of just blindly firing
     setTimeout(() => { 
-        // Only trigger 'No Answer' if the call hasn't been accepted yet
         if (!isCallAcceptedRef.current) {
             setIsInCall(prev => { 
                 if (prev) { 
                     setCallStatusPopup("timeout"); 
-                    return false; // Close the overlay
+                    return false; 
                 } 
                 return prev; 
             }); 
@@ -383,11 +402,19 @@ export default function ChatPage() {
     typingTimeoutRef.current = setTimeout(() => { setIsTyping(false); socket.emit("stop_typing", { senderId: user?.id, receiverId: activeChatId }); }, 2000);
   };
 
-  const contactsWithStatus = contacts.map(c => ({
-      ...c,
-      status: (onlineUsers.includes(c.id) ? "Online" : "Offline") as "Online" | "Offline",
-      lastMessage: lastMessages[c.id] || "Tap to chat"
-  }));
+  // 👇 FIX: Robust online check that works with both array and object structures
+  const contactsWithStatus = contacts.map(c => {
+      // Check if ID exists in the onlineUsers list (handles if list is array of IDs or Objects)
+      const isOnline = Array.isArray(onlineUsers) 
+          ? onlineUsers.some(u => (typeof u === 'string' ? u === c.id : u.userId === c.id))
+          : false;
+
+      return {
+          ...c,
+          status: (isOnline ? "Online" : "Offline") as "Online" | "Offline",
+          lastMessage: lastMessages[c.id] || "Tap to chat"
+      };
+  });
 
   const filteredContacts = contactsWithStatus
     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -449,7 +476,6 @@ export default function ChatPage() {
                   roomName={currentRoomId}
                   onDisconnect={handleLocalDisconnect}
                   initialVideoEnabled={startWithVideo}
-                  // 👇 PASS THE ACTIVE CONTACT INFO HERE
                   userName={activeContact.name}
                   userAvatar={activeContact.avatar}
               />
@@ -504,7 +530,8 @@ export default function ChatPage() {
                                  <Download className="w-4 h-4 text-white/50" />
                              </a>
                           )}
-                          {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
+                          {/* 👇 UPDATED: Use the link renderer function */}
+                          {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{renderMessageWithLinks(m.text)}</p>}
                           <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
                               <span className="text-[10px] font-medium">{m.time}</span>
                               {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
@@ -524,7 +551,6 @@ export default function ChatPage() {
                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
                    {isRecording ? (
                       <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
-                          {/* 👇 RESTORED: Original Wave Animation */}
                           <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
                           <div className="flex items-center gap-2 pl-4 z-10">
                               <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
@@ -532,23 +558,9 @@ export default function ChatPage() {
                           </div>
                           
                           <div className="flex items-center justify-center gap-1 h-8 flex-1 mx-4">
-                              {/* Inject Style Tag here for the wave keyframes */}
-                              <style>{`
-                                  @keyframes wave {
-                                      0%, 100% { height: 15%; opacity: 0.3; }
-                                      50% { height: 70%; opacity: 1; }
-                                  }
-                              `}</style>
+                              <style>{` @keyframes wave { 0%, 100% { height: 15%; opacity: 0.3; } 50% { height: 70%; opacity: 1; } } `}</style>
                               {[...Array(12)].map((_, i) => (
-                                  <div 
-                                      key={i} 
-                                      className="w-1 bg-red-500 rounded-full opacity-80"
-                                      style={{
-                                          animation: `wave 1s ease-in-out infinite`,
-                                          animationDelay: `${i * 0.1}s`,
-                                          height: '100%' 
-                                      }}
-                                  />
+                                  <div key={i} className="w-1 bg-red-500 rounded-full opacity-80" style={{ animation: `wave 1s ease-in-out infinite`, animationDelay: `${i * 0.1}s`, height: '100%' }} />
                               ))}
                           </div>
 
