@@ -67,11 +67,11 @@ Built with the latest web standards (**Next.js 16**, **React 19**, **Tailwind v4
 
 | **Hero Section (3D Spline)** | **AI Dashboard** |
 |:---:|:---:|
-| ![Hero Placeholder](https://placehold.co/600x400/1e1e2e/FFF?text=Hero+Section+Screenshot) | ![Dashboard Placeholder](https://placehold.co/600x400/1e1e2e/FFF?text=AI+Dashboard+Screenshot) |
+| ![Hero Placeholder](https://drive.google.com/file/d/1rduZMTvx4X5wsjTPwpuULgwg6q_sP9qG/view?usp=drive_link) | ![Dashboard Placeholder](https://drive.google.com/file/d/1ko4NluVaIPeI2JOCk7miYmlAmRBoHJlT/view?usp=drive_link) |
 
 | **Real-time Video Call** | **Chat Interface** |
 |:---:|:---:|
-| ![Video Call Placeholder](https://placehold.co/600x400/1e1e2e/FFF?text=LiveKit+Video+Call) | ![Chat Placeholder](https://placehold.co/600x400/1e1e2e/FFF?text=Socket.IO+Chat) |
+| ![Video Call Placeholder](https://drive.google.com/file/d/1Mq2qdXemBj-aFMICPtU4_B99sJ5hEDAG/view?usp=drive_link) | ![Chat Placeholder](https://drive.google.com/file/d/16Q6brO7hCNiF8fdN1Z47B8MYBA3LAtcH/view?usp=drive_link) |
 
 <img src="https://r2.erweima.ai/imgcompressed/compressed_9614f1771142273151478170669222e9.webp" width="100%" height="8px" alt="Gradient Line">
 
