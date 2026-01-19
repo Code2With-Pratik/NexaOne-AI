@@ -71,7 +71,7 @@ Built with the latest web standards (**Next.js 16**, **React 19**, **Tailwind v4
 
 | **Real-time Video Call** | **Chat Interface** |
 |:---:|:---:|
-| ![Video Call Placeholder](https://drive.google.com/file/d/1Mq2qdXemBj-aFMICPtU4_B99sJ5hEDAG/view?usp=drive_link) | ![Chat Placeholder](https://drive.google.com/file/d/16Q6brO7hCNiF8fdN1Z47B8MYBA3LAtcH/view?usp=sharing) |
+| ![Video Call Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164351.png?raw=true) | ![Chat Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164409.png?raw=true) |
 
 <img src="https://r2.erweima.ai/imgcompressed/compressed_9614f1771142273151478170669222e9.webp" width="100%" height="8px" alt="Gradient Line">
 
