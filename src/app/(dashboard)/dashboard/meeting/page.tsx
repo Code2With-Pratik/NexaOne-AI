@@ -12,16 +12,13 @@ export default function MeetingLobbyPage() {
 
   // 1. START MEETING (Host)
   const startMeeting = () => {
-      // Generate a random ID for the room
       const roomId = crypto.randomUUID(); 
-      // Redirect to the room page as HOST
       router.push(`/dashboard/meeting/${roomId}?host=true`);
   };
 
   // 2. JOIN MEETING (Guest)
   const joinMeeting = () => {
       if (!joinId.trim()) return;
-      // Redirect to the room page as GUEST
       router.push(`/dashboard/meeting/${joinId}`);
   };
 
@@ -32,7 +29,7 @@ export default function MeetingLobbyPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-pink-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
         <div className="text-center mb-16 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-pink-300 mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-pink-300 mb-6 select-none">
                 <Sparkles className="w-3 h-3" />
                 <span>Secure • Low Latency • HD Video</span>
             </div>
@@ -65,7 +62,7 @@ export default function MeetingLobbyPage() {
                     <h2 className="text-2xl font-bold text-white mb-2">New Meeting</h2>
                     <p className="text-pink-200/50 mb-8 text-sm">Create a new room and invite others via link.</p>
                     
-                    <div className="flex items-center gap-2 text-white font-semibold text-sm bg-pink-600/20 w-fit px-4 py-2 rounded-xl group-hover:bg-pink-600 group-hover:shadow-lg transition-all">
+                    <div className="flex items-center gap-2 text-white font-semibold text-sm bg-pink-600/20 w-fit px-4 py-2 rounded-xl group-hover:bg-pink-600 group-hover:shadow-lg transition-all cursor-pointer">
                         Start Now <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
                 </div>
@@ -91,13 +88,13 @@ export default function MeetingLobbyPage() {
                             value={joinId}
                             onChange={(e) => setJoinId(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && joinMeeting()}
-                            className="w-full bg-white/2 border border-white/10 rounded-xl pl-10 pr-4 py-3.5 text-white text-sm focus:outline-none focus:border-pink-500/50 focus:bg-white/1 transition-all"
+                            className="w-full bg-white/2 border border-white/10 rounded-xl pl-10 pr-4 py-3.5 text-white text-sm focus:outline-none focus:border-pink-500/50 focus:bg-white/1 transition-all placeholder:text-white/20"
                         />
                     </div>
                     <button 
                         onClick={joinMeeting} 
                         disabled={!joinId}
-                        className="w-full bg-white text-black font-bold py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors text-sm shadow-lg shadow-white/5 cursor-pointer"
+                        className="w-full bg-white text-black font-bold py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors text-sm shadow-lg shadow-white/5 cursor-pointer flex items-center justify-center gap-2"
                     >
                         Join Room
                     </button>

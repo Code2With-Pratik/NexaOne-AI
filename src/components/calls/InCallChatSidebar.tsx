@@ -28,7 +28,7 @@ export default function InCallChatSidebar({ onClose }: { onClose: () => void }) 
           const isMe = msg.from?.identity === room.localParticipant.identity;
           return (
             <div key={msg.timestamp + i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isMe ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
+              <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${isMe ? 'bg-red-600 text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
                 <p className="font-bold text-xs mb-1 opacity-70">{msg.from?.name || 'Guest'}</p>
                 <p>{msg.message}</p>
               </div>
@@ -46,9 +46,9 @@ export default function InCallChatSidebar({ onClose }: { onClose: () => void }) 
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && onSend()}
           placeholder="Write a message..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 text-white focus:outline-none focus:border-indigo-500"
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 text-white focus:outline-none focus:border-red-500"
         />
-        <button onClick={onSend} disabled={!message.trim()} className="p-3 bg-indigo-600 rounded-xl text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+        <button onClick={onSend} disabled={!message.trim()} className="p-3 bg-red-600 rounded-xl text-white hover:bg-red-700 disabled:opacity-50 transition-colors">
           <Send className="w-4 h-4" />
         </button>
       </div>

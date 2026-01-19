@@ -6,9 +6,7 @@ const { PrismaClient } = require("@prisma/client");
 const { Pool } = require("pg");
 const { PrismaPg } = require("@prisma/adapter-pg");
 
-// 👇 KEY FIX: Load secrets from .env.local first
-// require('dotenv').config({ path: '.env.local' });
-require('dotenv').config(); // Fallback to .env
+require('dotenv').config();
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -20,7 +18,8 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-// Track Online Users (Map: userId -> socketId)
+// Track Online Users (Map: userId -> { socketId, name, avatar })
+// 👇 UPDATED: Stores full object now
 const onlineUsers = new Map();
 
 // Track Active Meetings (Map: roomId -> { hostSocketId, hostUserId, waitingUsers: Set })
@@ -37,16 +36,55 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
+    
     // ============================================================
-    // 1. USER PRESENCE & STATUS
+    // 0. AUTO-JOIN ON CONNECTION
+    // ============================================================
+    // 👇 Extract extra details from query
+    const { userId, userName, userAvatar } = socket.handshake.query;
+    
+    if (userId) {
+        socket.join(userId);
+        
+        // 👇 UPDATED: Store Name and Avatar
+        onlineUsers.set(userId, { 
+            socketId: socket.id, 
+            name: userName || "Unknown User", 
+            avatar: userAvatar || "" 
+        });
+        
+        console.log(`✅ User ${userId} (${userName}) connected (Auto-Join).`);
+        
+        // 👇 UPDATED: Broadcast full user details
+        io.emit("user_status_update", { 
+            userId: userId, 
+            status: "Online",
+            user: { name: userName, avatar: userAvatar } 
+        });
+        
+        // 👇 UPDATED: Send Full Map Entries [id, data]
+        socket.emit("current_online_list", Array.from(onlineUsers.entries()));
+    }
+
+    // 👇 MANUAL REQUEST HANDLER (Updated to send full data)
+    socket.on("request_online_users", () => {
+        console.log(`⚡ Socket ${socket.id} requested list.`);
+        socket.emit("current_online_list", Array.from(onlineUsers.entries()));
+    });
+
+    // ============================================================
+    // 1. MANUAL JOIN FALLBACK
     // ============================================================
     socket.on("join", (userId) => {
       socket.join(userId); 
-      onlineUsers.set(userId, socket.id); 
+      // Fallback if name/avatar not provided
+      if (!onlineUsers.has(userId)) {
+          onlineUsers.set(userId, { socketId: socket.id, name: "User", avatar: "" });
+      }
+      console.log(`User ${userId} came online (Manual Join).`);
       
-      console.log(`User ${userId} came online.`);
       io.emit("user_status_update", { userId, status: "Online" });
-      socket.emit("current_online_list", Array.from(onlineUsers.keys()));
+      socket.emit("current_online_list", Array.from(onlineUsers.entries()));
     });
 
     // ============================================================
@@ -61,14 +99,14 @@ app.prepare().then(() => {
     });
 
     // ============================================================
-    // 3. MESSAGING (TEXT + FILE SUPPORT)
+    // 3. MESSAGING
     // ============================================================
     socket.on("send_message", async (data) => {
       try {
         const savedMsg = await prisma.message.create({
           data: {
             content: data.text,
-            type: data.type, // Supports 'text', 'image', 'voice', 'sticker', 'file'
+            type: data.type,
             senderId: String(data.senderId),
             receiverId: String(data.receiverId)
           }
@@ -84,22 +122,16 @@ app.prepare().then(() => {
       }
     });
 
-    // 👇 NEW: READ RECEIPTS
     socket.on("mark_messages_read", ({ senderId, receiverId }) => {
-        // Notify the SENDER that their messages were read
         io.to(senderId).emit("messages_read_update", { receiverId });
     });
 
     // ============================================================
-    // 4. CALLING EVENTS (1-on-1)
+    // 4. CALLING EVENTS
     // ============================================================
-
-    // A. INITIATE CALL -> Create Log in DB
     socket.on("outgoing_call", async ({ callerId, calleeId, callerName, isVideo, roomId }) => {
         console.log(`[Call] ${callerId} calling ${calleeId}`);
-        
         try {
-            // 1. Create the Call Log immediately as "MISSED"
             const log = await prisma.callLog.create({
                 data: {
                     initiatorId: callerId,
@@ -109,27 +141,16 @@ app.prepare().then(() => {
                 }
             });
 
-            // 2. Send the call signal to receiver WITH the logId
             io.to(calleeId).emit("incoming_call", { 
-                callerId, 
-                callerName, 
-                isVideo, 
-                roomId, 
-                logId: log.id 
+                callerId, callerName, isVideo, roomId, logId: log.id 
             });
 
-            // 3. Send the logId back to the caller (so they can update it too)
             socket.emit("call_sent_success", { logId: log.id });
-
-        } catch (e) {
-            console.error("Error creating call log:", e);
-        }
+        } catch (e) { console.error("Error creating call log:", e); }
     });
 
-    // B. ANSWER CALL -> Update Log to "COMPLETED"
     socket.on("call_accepted_signal", async ({ callerId, roomId, logId }) => {
         io.to(callerId).emit("call_accepted", { roomId });
-        
         if (logId) {
             try {
                 await prisma.callLog.update({
@@ -140,10 +161,8 @@ app.prepare().then(() => {
         }
     });
 
-    // C. REJECT CALL -> Update Log to "REJECTED"
     socket.on("reject_call", async ({ callerId, logId }) => {
         io.to(callerId).emit("call_rejected");
-
         if (logId) {
             try {
                 await prisma.callLog.update({
@@ -154,11 +173,8 @@ app.prepare().then(() => {
         }
     });
 
-    // D. END CALL -> Set End Time
     socket.on("end_call", async ({ to, logId }) => {
-        // If 'to' is provided, notify them to disconnect too
         if (to) io.to(to).emit("call_ended");
-
         if (logId) {
             try {
                 await prisma.callLog.update({
@@ -170,65 +186,54 @@ app.prepare().then(() => {
     });
 
     // ============================================================
-    // 5. GROUP MEETING GATEKEEPER EVENTS
+    // 5. GROUP MEETING EVENTS
     // ============================================================
-
-    // A. HOST STARTS MEETING
     socket.on("meeting_start", ({ roomId, userId }) => {
+        socket.join(roomId);
         const roomData = meetingRooms.get(roomId) || { waiting: new Set() };
         roomData.hostSocketId = socket.id;
-        roomData.hostUserId = userId; // Important for Host Badge
+        roomData.hostUserId = userId;
         meetingRooms.set(roomId, roomData);
-        
         console.log(`[Meeting] Host ${userId} started room ${roomId}`);
     });
 
-    // B. GUEST REQUESTS TO JOIN (Knock Knock)
     socket.on("join_request", ({ roomId, user }) => {
         const roomData = meetingRooms.get(roomId);
-
         if (!roomData || !roomData.hostSocketId) {
-            // No host? Maybe auto-join or error.
             socket.emit("join_status", { status: "no_host" });
             return;
         }
-
         console.log(`[Meeting] ${user.name} requesting to join ${roomId}`);
-        
-        // Notify HOST that someone is waiting
-        io.to(roomData.hostSocketId).emit("guest_waiting", { 
-            socketId: socket.id, 
-            user: user 
-        });
+        io.to(roomData.hostSocketId).emit("guest_waiting", { socketId: socket.id, user: user });
     });
 
-    // C. HOST PROCESSES REQUEST (Approve/Reject)
     socket.on("process_request", ({ guestSocketId, action }) => {
-        // action = "approved" | "rejected"
-        console.log(`[Meeting] Guest ${guestSocketId} was ${action}`);
-        
-        // Notify the GUEST of the decision
         io.to(guestSocketId).emit("join_status", { status: action });
     });
 
-    // D. KICK USER
-    socket.on("kick_participant", ({ socketId }) => {
-        io.to(socketId).emit("kicked");
+    socket.on("get_room_info", ({ roomId }) => {
+        socket.join(roomId);
+        const roomData = meetingRooms.get(roomId);
+        if (roomData) {
+            socket.emit("room_info", { hostIdentity: roomData.hostUserId });
+        }
     });
 
-    // E. GUEST CANCELS REQUEST
+    socket.on("kick_participant", ({ roomId, targetIdentity }) => {
+        console.log(`Kick requested for User: ${targetIdentity} in Room: ${roomId}`);
+        io.to(roomId).emit("participant_kicked", { userId: targetIdentity });
+    });
+
+    socket.on("end_meeting_for_all", ({ roomId }) => {
+        console.log(`Host ended meeting: ${roomId}`);
+        io.to(roomId).emit("meeting_ended");
+        meetingRooms.delete(roomId);
+    });
+
     socket.on("cancel_request", ({ roomId }) => {
         const roomData = meetingRooms.get(roomId);
         if (roomData && roomData.hostSocketId) {
             io.to(roomData.hostSocketId).emit("guest_cancelled", { socketId: socket.id });
-        }
-    });
-
-    // F. GET ROOM INFO (For Host Badge)
-    socket.on("get_room_info", ({ roomId }) => {
-        const roomData = meetingRooms.get(roomId);
-        if (roomData) {
-            socket.emit("room_info", { hostIdentity: roomData.hostUserId });
         }
     });
 
@@ -237,8 +242,9 @@ app.prepare().then(() => {
     // ============================================================
     socket.on("disconnect", () => {
       // Cleanup Online Users
-      for (const [userId, socketId] of onlineUsers.entries()) {
-        if (socketId === socket.id) {
+      // 👇 UPDATED: Logic to handle object values
+      for (const [userId, userData] of onlineUsers.entries()) {
+        if (userData.socketId === socket.id) {
           onlineUsers.delete(userId);
           io.emit("user_status_update", { userId, status: "Offline" });
           break;
