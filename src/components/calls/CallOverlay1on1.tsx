@@ -69,13 +69,21 @@ const RemoteParticipantView = ({ participant, track, avatar, name }: { participa
                     disableSpeakingIndicator={true}
                 />
             ) : (
+                /* Camera Off -> Show Avatar */
                 <div className="w-full h-full flex items-center justify-center flex-col gap-4">
                     <div className={cn("relative p-1 rounded-full", isSpeaking && "animate-pulse ring-4 ring-red-500")}>
-                        <img 
-                            src={avatar} 
-                            alt={name} 
-                            className="w-32 h-32 rounded-full object-cover bg-zinc-800" 
-                        />
+                        {/* 👇 FIX: Check if avatar exists before rendering img */}
+                        {avatar ? (
+                            <img 
+                                src={avatar} 
+                                alt={name} 
+                                className="w-32 h-32 rounded-full object-cover bg-zinc-800" 
+                            />
+                        ) : (
+                            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white border-4 border-white/10">
+                                {name?.charAt(0).toUpperCase() || "?"}
+                            </div>
+                        )}
                     </div>
                     <p className="text-white text-2xl font-bold">{name}</p>
                     <p className="text-white/40 text-sm">Camera Off</p>
@@ -226,7 +234,15 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
                 ) : (
                     /* Waiting For User */
                     <div className="flex flex-col items-center justify-center gap-4 opacity-70 animate-pulse">
-                         <img src={userAvatar} className="w-24 h-24 rounded-full object-cover border-4 border-white/10" />
+                         {/* 👇 FIX: Conditional rendering for Avatar or Fallback Initials */}
+                         {userAvatar ? (
+                             <img src={userAvatar} className="w-24 h-24 rounded-full object-cover border-4 border-white/10" alt={userName} />
+                         ) : (
+                             <div className="w-24 h-24 rounded-full bg-zinc-800 border-4 border-white/10 flex items-center justify-center">
+                                <span className="text-3xl font-bold text-white">{userName?.charAt(0).toUpperCase() || "?"}</span>
+                             </div>
+                         )}
+                        
                         <div className="text-center">
                             <h3 className="text-white text-xl font-bold">Calling {userName}...</h3>
                             <p className="text-white/50 text-sm">Waiting for them to join</p>
