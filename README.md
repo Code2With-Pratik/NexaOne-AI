@@ -65,9 +65,9 @@ Built with the latest web standards (**Next.js 16**, **React 19**, **Tailwind v4
 
 > *Screenshots of the application in action.*
 
-| **Hero Section (3D Spline)** |  **Features** |
+| **Hero Section (3D Spline)** |  **AI Dashboard** |
 |:---:|:---:|
-| ![Hero Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) | ![Hero Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) | 
+| ![Hero Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) | ![AI Dashboard Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-18%20003905.png?raw=true) | 
 | **About** | **Features** |
 |:---:|:---:|
 | ![About Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-18%20003619.png?raw=true) | ![Features Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-18%20003632.png?raw=true) |
