@@ -67,7 +67,7 @@ Built with the latest web standards (**Next.js 16**, **React 19**, **Tailwind v4
 
 | **Hero Section (3D Spline)** | **AI Dashboard** |
 |:---:|:---:|
-| ![Hero Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) | ![Dashboard Placeholder](https://drive.google.com/file/d/1ko4NluVaIPeI2JOCk7miYmlAmRBoHJlT/view?usp=drive_link) |
+| ![Hero Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) | ![Dashboard Placeholder](https://github.com/Code2With-Pratik/NexaOne-AI/blob/main/public/NexaOneAI%20Images/Screenshot%202026-01-19%20164009.png?raw=true) |
 
 | **Real-time Video Call** | **Chat Interface** |
 |:---:|:---:|
