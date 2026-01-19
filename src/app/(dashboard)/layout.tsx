@@ -29,7 +29,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   // 3. 🛠️ MAINTENANCE MODE CHECK
-  // If Maintenance is ON, and user is NOT Admin -> Block access
   const isMaintenanceMode = settings?.maintenanceMode || false;
   const isUserAdmin = user?.role === "ADMIN";
 
@@ -57,8 +56,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const creditBalance = await getCreditBalance();
 
   return (
-    <DashboardClient creditBalance={creditBalance} isAdmin={isUserAdmin}>
-      {children}
-    </DashboardClient>
+    // 👇 FIX: The 'data-lenis-prevent' attribute here disables smooth scrolling 
+    // for EVERYTHING inside this layout (Sidebar, Chat, Logs, History).
+    // className="contents" ensures this div doesn't break your layout styling.
+    <div data-lenis-prevent className="contents">
+        <DashboardClient creditBalance={creditBalance} isAdmin={isUserAdmin}>
+            {children}
+        </DashboardClient>
+    </div>
   );
 }
