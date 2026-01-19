@@ -3,13 +3,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, MoreVertical, Send, Paperclip, Mic, Smile, CheckCheck,
-  Trash2, BellOff, Bell, Pin, PinOff, ArrowLeft, FileText, Download, Sticker
+  Trash2, BellOff, Pin, ArrowLeft, FileText, Download, Sticker, UserX
 } from "lucide-react";
 import { cn } from '@/lib/utils';
-// ✅ FIX 1: Import 'Theme' from the library
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { useUser } from "@clerk/nextjs";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import CallOverlay1on1 from "@/components/calls/CallOverlay1on1";
 import { useSocket } from "@/providers/SocketProvider";
@@ -19,26 +18,36 @@ import VoiceMessage from "@/components/chat/VoiceMessage";
 type MessageType = "text" | "image" | "voice" | "sticker" | "file";
 
 type Message = {
-  id: string;
-  text: string;
-  senderId: string;
-  receiverId: string;
-  time: string;
-  date: string;
-  type: MessageType;
-  fileName?: string;
-  status: "sent" | "delivered" | "read";
+  id: string; text: string; senderId: string; receiverId: string;
+  time: string; date: string; type: MessageType; fileName?: string; status: "sent" | "delivered" | "read";
 };
 
 type Contact = {
-  id: string;
-  name: string;
-  avatar: string;
-  color: string;
-  status: "Online" | "Offline";
-  lastSeen: string;
-  lastMessage?: string;
+  id: string; name: string; avatar: string; color: string;
+  status: "Online" | "Offline"; lastSeen: string; lastMessage?: string;
 };
+
+// Simple Modal Component for Call Status
+const CallStatusModal = ({ status, onClose }: { status: "rejected" | "busy" | "timeout", onClose: () => void }) => (
+    <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+        <div className="bg-[#1a1a1a] border border-white/10 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-sm w-full mx-4">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center">
+                <UserX className="w-8 h-8 text-red-500" />
+            </div>
+            <div className="text-center">
+                <h3 className="text-xl font-bold text-white mb-1">
+                    {status === "busy" ? "Line Busy" : status === "timeout" ? "No Answer" : "Call Rejected"}
+                </h3>
+                <p className="text-white/50 text-sm">
+                    {status === "busy" ? "The user is currently in another call." : "The user is not available at the moment."}
+                </p>
+            </div>
+            <button onClick={onClose} className="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+);
 
 const STICKERS = ["👻", "🤖", "👽", "🦄", "🔥", "💯", "🎉", "❤️", "🚀", "🍕"];
 
@@ -58,7 +67,7 @@ const formatDateLabel = (dateString: string) => {
 const getDirectRoomId = (id1: string, id2: string) => { return [id1, id2].sort().join('-'); };
 
 export default function ChatPage() {
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const searchParams = useSearchParams();
   const { socket, onlineUsers } = useSocket(); 
 
@@ -87,6 +96,12 @@ export default function ChatPage() {
   const [currentRoomId, setCurrentRoomId] = useState("");
   const [startWithVideo, setStartWithVideo] = useState(false);
   const [currentLogId, setCurrentLogId] = useState<string>("");
+  
+  // Call Status Logic for Popup
+  const [callStatusPopup, setCallStatusPopup] = useState<"rejected" | "busy" | "timeout" | null>(null);
+
+  // 👇 NEW: Ref to track if call is accepted (Solves the auto-disconnect bug)
+  const isCallAcceptedRef = useRef(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +165,6 @@ export default function ChatPage() {
         }));
         
         setConversations(prev => ({ ...prev, [activeChatId]: formattedMessages }));
-        
         if(socket) socket.emit("mark_messages_read", { senderId: activeChatId, receiverId: user.id });
       } catch (err) { console.error(err); }
     };
@@ -163,15 +177,9 @@ export default function ChatPage() {
 
     const handleReceiveMessage = (msg: any) => {
       const formattedMsg: Message = {
-        id: msg.id || Date.now().toString(), 
-        text: msg.text || msg.content, 
-        senderId: msg.senderId, 
-        receiverId: msg.receiverId,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: formatDateLabel(new Date().toISOString()), 
-        type: (msg.type as MessageType) || "text", 
-        status: "delivered",
-        fileName: msg.fileName
+        id: msg.id || Date.now().toString(), text: msg.text || msg.content, senderId: msg.senderId, receiverId: msg.receiverId,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), date: formatDateLabel(new Date().toISOString()), 
+        type: (msg.type as MessageType) || "text", status: "delivered", fileName: msg.fileName
       };
       
       const targetChatId = msg.senderId === user.id ? msg.receiverId : msg.senderId;
@@ -199,10 +207,29 @@ export default function ChatPage() {
         }
     };
 
-    const handleCallAccepted = async ({ roomId }: any) => { await joinLiveKitRoom(roomId); };
-    const handleCallEnded = () => { setIsInCall(false); setCallToken(""); setCurrentLogId(""); };
+    const handleCallAccepted = async ({ roomId }: any) => { 
+        // 👇 FIX: Mark call as accepted so timeout doesn't kill it
+        isCallAcceptedRef.current = true;
+        await joinLiveKitRoom(roomId); 
+    };
+    
+    const handleCallEnded = () => { 
+        setIsInCall(false); 
+        setCallToken(""); 
+        setCurrentLogId("");
+        isCallAcceptedRef.current = false;
+    };
+
     const handleCallSuccess = ({ logId }: any) => { setCurrentLogId(logId); };
-    const handleCallRejected = () => { setIsInCall(false); setCallToken(""); setCurrentLogId(""); };
+    
+    // Handle Rejection with Popup
+    const handleCallRejected = () => { 
+        setIsInCall(false); 
+        setCallToken(""); 
+        setCurrentLogId(""); 
+        setCallStatusPopup("rejected");
+        isCallAcceptedRef.current = false;
+    };
 
     socket.on("receive_message", handleReceiveMessage);
     socket.on("messages_read_update", handleReadUpdate);
@@ -236,14 +263,32 @@ export default function ChatPage() {
     if (!activeChatId || !user || !socket) return;
     const roomId = getDirectRoomId(user.id, activeChatId);
     setStartWithVideo(isVideo);
+    
+    // 👇 Reset acceptance status before dialing
+    isCallAcceptedRef.current = false;
+
     socket.emit("outgoing_call", { callerId: user.id, calleeId: activeChatId, callerName: user.fullName, isVideo, roomId });
     await joinLiveKitRoom(roomId);
-    setTimeout(() => { setIsInCall(prev => { if (prev && !callToken) { alert("No answer."); return false; } return prev; }); }, 45000);
+    
+    // 👇 FIX: Timeout logic checks the Ref instead of just blindly firing
+    setTimeout(() => { 
+        // Only trigger 'No Answer' if the call hasn't been accepted yet
+        if (!isCallAcceptedRef.current) {
+            setIsInCall(prev => { 
+                if (prev) { 
+                    setCallStatusPopup("timeout"); 
+                    return false; // Close the overlay
+                } 
+                return prev; 
+            }); 
+        }
+    }, 45000);
   };
 
   const handleLocalDisconnect = () => {
       if (socket) { socket.emit("end_call", { to: activeChatId, logId: currentLogId }); }
       setIsInCall(false); setCallToken(""); setCurrentLogId("");
+      isCallAcceptedRef.current = false;
   };
 
   const handleChatAction = async (action: "pin" | "mute" | "delete") => {
@@ -283,26 +328,17 @@ export default function ChatPage() {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); 
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-              const base64Audio = reader.result as string;
-              sendMessagePayload(base64Audio, "voice");
-        };
+        reader.onloadend = () => { sendMessagePayload(reader.result as string, "voice"); };
       };
 
       mediaRecorder.start();
       setIsRecording(true);
-    } catch (err) {
-      console.error("Mic Error:", err);
-      alert("Microphone access denied.");
-    }
+    } catch (err) { console.error("Mic Error:", err); alert("Microphone access denied."); }
   };
 
   const cancelRecording = () => {
@@ -330,11 +366,8 @@ export default function ChatPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
           const result = reader.result as string;
-          if (file.type.startsWith("image/")) {
-              sendMessagePayload(result, "image");
-          } else {
-              sendMessagePayload(result, "file", file.name);
-          }
+          if (file.type.startsWith("image/")) { sendMessagePayload(result, "image"); } 
+          else { sendMessagePayload(result, "file", file.name); }
       };
       reader.readAsDataURL(file);
     }
@@ -373,6 +406,9 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/10 backdrop-blur-xs shadow-2xl relative">
       
+      {/* RENDER CALL STATUS MODAL */}
+      {callStatusPopup && <CallStatusModal status={callStatusPopup} onClose={() => setCallStatusPopup(null)} />}
+
       {/* SIDEBAR */}
       <div className={cn("w-full md:w-80 h-full border-r-2 border-white/20 flex flex-col bg-black/20", activeChatId ? "hidden md:flex" : "flex")}>
         <div className="p-4 border-b border-white/10 relative">
@@ -405,17 +441,20 @@ export default function ChatPage() {
       {/* CHAT AREA */}
       <div className={cn("flex-1 flex flex-col bg-transparent h-full relative", !activeChatId ? "hidden md:flex" : "flex")}>
         
-        {/* CALL OVERLAY (Rendered here so it's confined to the chat area) */}
-        {isInCall && callToken ? (
-           <div className="absolute inset-0 z-50 bg-black w-full h-full">
+        {/* CALL OVERLAY */}
+       {isInCall && callToken ? (
+          <div className="absolute inset-0 z-50 bg-black w-full h-full">
               <CallOverlay1on1
-                token={callToken}
-                roomName={currentRoomId}
-                onDisconnect={handleLocalDisconnect}
-                initialVideoEnabled={startWithVideo}
+                  token={callToken}
+                  roomName={currentRoomId}
+                  onDisconnect={handleLocalDisconnect}
+                  initialVideoEnabled={startWithVideo}
+                  // 👇 PASS THE ACTIVE CONTACT INFO HERE
+                  userName={activeContact.name}
+                  userAvatar={activeContact.avatar}
               />
-           </div>
-        ) : (
+          </div>
+      ) : (
           activeChatId ? (
             <>
               {/* HEADER */}
@@ -457,23 +496,15 @@ export default function ChatPage() {
                         <div className={cn("max-w-[85%] md:max-w-[65%] p-3 rounded-2xl text-sm relative group shadow-md", isMe ? "bg-indigo-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
                           {m.type === 'image' && <img src={m.text} alt="Shared" className="rounded-lg max-h-60 w-auto object-cover" />}
                           {m.type === 'sticker' && <span className="text-5xl block p-2">{m.text}</span>}
-                          
-                          {/* 👇 VOICE MESSAGE COMPONENT */}
                           {m.type === 'voice' && <VoiceMessage src={m.text} isMe={isMe} />}
-                          
                           {m.type === 'file' && (
                              <a href={m.text} download={m.fileName || "document"} className="flex items-center gap-3 bg-black/20 p-3 rounded-lg hover:bg-black/30 transition text-white/90 no-underline">
                                  <div className="bg-white/10 p-2 rounded-lg"><FileText className="w-6 h-6 text-white" /></div>
-                                 <div className="flex-1 min-w-0">
-                                     <p className="font-bold text-sm truncate max-w-[150px]">{m.fileName || "Document"}</p>
-                                     <p className="text-[10px] text-white/50">Click to download</p>
-                                 </div>
+                                 <div className="flex-1 min-w-0"><p className="font-bold text-sm truncate max-w-[150px]">{m.fileName || "Document"}</p><p className="text-[10px] text-white/50">Click to download</p></div>
                                  <Download className="w-4 h-4 text-white/50" />
                              </a>
                           )}
-
                           {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>}
-                          
                           <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
                               <span className="text-[10px] font-medium">{m.time}</span>
                               {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
@@ -487,21 +518,27 @@ export default function ChatPage() {
 
               {/* INPUT AREA */}
               <div className="p-4 bg-black/40 border-t border-white/10 relative z-30">
-                 {/* ✅ FIX 2: Use Theme.DARK enum instead of "dark" string */}
                  {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme={Theme.DARK} onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
                  {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1ad8] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
                  
                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
-                   
-                   {/* RECORDING UI */}
                    {isRecording ? (
                       <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
+                          {/* 👇 RESTORED: Original Wave Animation */}
                           <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
                           <div className="flex items-center gap-2 pl-4 z-10">
                               <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
                               <span className="text-xs font-mono font-bold tracking-widest text-red-500">REC</span>
                           </div>
+                          
                           <div className="flex items-center justify-center gap-1 h-8 flex-1 mx-4">
+                              {/* Inject Style Tag here for the wave keyframes */}
+                              <style>{`
+                                  @keyframes wave {
+                                      0%, 100% { height: 15%; opacity: 0.3; }
+                                      50% { height: 70%; opacity: 1; }
+                                  }
+                              `}</style>
                               {[...Array(12)].map((_, i) => (
                                   <div 
                                       key={i} 
@@ -511,32 +548,22 @@ export default function ChatPage() {
                                           animationDelay: `${i * 0.1}s`,
                                           height: '100%' 
                                       }}
-                                  >
-                                      <style jsx>{`
-                                          @keyframes wave {
-                                              0%, 100% { height: 15%; opacity: 0.3; }
-                                              50% { height: 70%; opacity: 1; }
-                                          }
-                                      `}</style>
-                                  </div>
+                                  />
                               ))}
                           </div>
+
                           <div className="flex items-center gap-3 pr-2 z-10">
                               <button onClick={cancelRecording} className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"><Trash2 className="w-5 h-5" /></button>
                               <button onClick={stopRecording} className="w-10 h-10 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"><Send className="w-4 h-4 ml-0.5 fill-current" /></button>
                           </div>
                       </div>
                    ) : (
-                       /* NORMAL INPUT UI */
                        <>
                            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400 cursor-pointer"><Smile className="w-6 h-6" /></button>
                            <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400 cursor-pointer"><Sticker className="w-5 h-5" /></button>
                            <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400 cursor-pointer"><Paperclip className="w-5 h-5" /></button>
-                           
                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
-                           
                            <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
-                           
                            {inputText.trim() ? (
                                <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white cursor-pointer"><Send className="w-4 h-4" /></button>
                            ) : (
