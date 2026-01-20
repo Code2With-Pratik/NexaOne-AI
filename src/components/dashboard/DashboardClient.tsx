@@ -53,7 +53,7 @@ export default function DashboardClient({
               </div>
               
               <div className="flex items-center justify-center pl-2 border-l border-white/10">
-                 <UserButton afterSignOutUrl="/" /> 
+                 <UserButton /> 
               </div>
           </div>
         </header>

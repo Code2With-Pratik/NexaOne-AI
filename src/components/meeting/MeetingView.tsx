@@ -84,13 +84,12 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
 
-  // 👇 FIX: DEDUPLICATE USERS
-  // This removes duplicates based on 'userId' to prevent the "same key" error
+  // Deduplicate users to prevent "same key" error
   const uniqueOnlineUsers = useMemo(() => {
       const seen = new Set();
       return onlineUsers.filter(u => {
-          if (!u || !u.userId) return false; // Safety check for nulls
-          if (seen.has(u.userId)) return false; // Duplicate check
+          if (!u || !u.userId) return false; 
+          if (seen.has(u.userId)) return false; 
           seen.add(u.userId);
           return true;
       });
@@ -159,7 +158,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             userId: uid,
             name: data?.name || "User",
             avatar: data?.avatar || ""
-        })).filter(u => u.userId !== localIdentity);
+        })).filter(u => u.userId !== localIdentity); // Filter out myself
 
         setOnlineUsers(users);
     };
@@ -169,7 +168,6 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             if (userId === localIdentity) return prev;
             
             if (status === "Online" && user) {
-                // Ensure no duplicates logic here too, but useMemo catches it anyway
                 const otherUsers = prev.filter(u => u.userId !== userId);
                 return [...otherUsers, { 
                     userId, 
@@ -371,7 +369,8 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             </div>
 
             {visibleGridTracks.length > 0 && (
-                <div className="w-80 or-w-96 bg-[#111] border-l border-white/10 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 shrink-0">
+                // 👇 FIXED: Changed "or-w-96" to "md:w-96" for proper responsive width
+                <div className="w-80 md:w-96 bg-[#111] border-l border-white/10 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 shrink-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-[120px]">
                         {visibleGridTracks.map((track) => (
                             <div key={track.publication?.trackSid || `${track.participant.identity}_${track.source}`} className="relative rounded-xl overflow-hidden border border-white/10 shadow-md group bg-black">
@@ -471,13 +470,11 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                     </div>
                 )}
 
-                {/* 👇 UPDATED INVITE TAB UI (Uses uniqueOnlineUsers) */}
                 {activeTab === "invite" && (
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                          <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
                              <p className="text-blue-200 text-xs">Click Invite to send the meeting link directly to a user's chat.</p>
                          </div>
-                         {/* 👇 FIX: Map over uniqueOnlineUsers instead of onlineUsers */}
                          {uniqueOnlineUsers.length === 0 ? (
                              <div className="text-center text-white/30 mt-10">
                                  <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -486,7 +483,6 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                          ) : (
                              uniqueOnlineUsers.map((u) => {
                                  const isSent = invitedUserIds.has(u.userId);
-                                 // Fallback if name/avatar are missing
                                  const displayName = u.name || "User";
                                  const firstChar = displayName.charAt(0) || "?";
 
@@ -564,7 +560,8 @@ function CustomParticipantTile({ trackRef, isHost, isMain, onPin, onKick, hostId
     return (
         <div className={cn("relative w-full h-full group bg-black transition-all duration-300", (isSpeaking && isVideoEnabled) ? "ring-4 ring-inset ring-green-500" : "")}>
             {isVideoEnabled ? (
-                <VideoTrack trackRef={trackRef} className="w-full h-full object-contain bg-black" />
+                // Use object-cover to fill the tile properly like standard meeting apps
+                <VideoTrack trackRef={trackRef} className="w-full h-full object-cover bg-black" />
             ) : (
                 <div className="w-full h-full flex items-center justify-center flex-col gap-4 bg-[#111]">
                     <div className={cn("w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 relative", isSpeaking && "animate-pulse ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]")}>

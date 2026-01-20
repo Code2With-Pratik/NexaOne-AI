@@ -40,7 +40,7 @@ export default function MeetingGatekeeperPage({ params }: { params: Promise<{ ro
     }
     const socket = socketRef.current;
 
-    // 3. 🔥 CRITICAL FIX: Force update metadata immediately
+    // 3. Force update metadata immediately
     // This ensures that even if the handshake missed the data, this event fixes it.
     if (socket.connected) {
         socket.emit("update_user_metadata", { userId: user.id, name: userName, avatar: userAvatar });

@@ -43,34 +43,61 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!isLoaded || !user) return;
 
-    // 👇 KEY FIX: We pass 'undefined' as the first argument.
-    // This forces Socket.io to connect to the "Current Window URL" automatically.
-    // It works perfectly on both Localhost AND Render without any config.
-    const newSocket = io(undefined, { 
+    // 👇 UPDATED: Use ENV variable for robustness, fallback to undefined (window.location)
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || undefined;
+
+    const newSocket = io(socketUrl, { 
         transports: ["websocket"],
-        path: "/socket.io", 
+        path: "/socket.io",
+        // 👇 UPDATED: Send initial data in handshake
+        query: {
+            userId: user.id,
+            userName: user.fullName,
+            userAvatar: user.imageUrl,
+        }
     });
     
     notificationSoundRef.current = new Audio("/sounds/water_drops.mp3");
 
     newSocket.on("connect", () => {
-      console.log("✅ Global Socket Connected");
+      console.log("✅ Global Socket Connected:", newSocket.id);
       setIsConnected(true);
-      newSocket.emit("join", user.id);
+      
+      // 👇 KEY FIX: Immediately identify to Server with FULL metadata
+      // This fixes the "One-Way" bug where user was connected but "anonymous"
+      newSocket.emit("update_user_metadata", {
+          userId: user.id,
+          name: user.fullName,
+          avatar: user.imageUrl
+      });
+
+      // Explicitly ask for the list right now
+      newSocket.emit("request_online_users");
     });
 
     newSocket.on("disconnect", () => {
       setIsConnected(false);
     });
 
-    newSocket.on("current_online_list", (users: string[]) => {
-        setOnlineUsers(users);
+    // 👇 UPDATED: Handle the Map-Entry format from server [[id, data], [id, data]]
+    newSocket.on("current_online_list", (entries: [string, any][]) => {
+        if (Array.isArray(entries)) {
+            // Extract just the IDs for simple checking
+            const ids = entries.map(([id]) => id);
+            setOnlineUsers(ids);
+        }
     });
 
+    // 👇 UPDATED: Handle Single User Status Updates
     newSocket.on("user_status_update", ({ userId, status }: { userId: string, status: string }) => {
         setOnlineUsers((prev) => {
-            if (status === "Online") return prev.includes(userId) ? prev : [...prev, userId];
-            return prev.filter(id => id !== userId);
+            if (status === "Online") {
+                // Add if not already present
+                return prev.includes(userId) ? prev : [...prev, userId];
+            } else {
+                // Remove
+                return prev.filter(id => id !== userId);
+            }
         });
     });
 
@@ -108,6 +135,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         let contentText = msg.text || "New Message";
+        // Simple heuristic for notification preview
         if (msg.type === "image") contentText = "📷 Sent an image";
         if (msg.type === "voice") contentText = "🎤 Sent a voice note";
         if (msg.type === "sticker") contentText = "👻 Sent a sticker";

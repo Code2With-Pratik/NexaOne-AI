@@ -27,6 +27,22 @@ type Contact = {
   status: "Online" | "Offline"; lastSeen: string; lastMessage?: string;
 };
 
+// --- HELPER: DETECT LINKS ---
+// 👇 NEW: Parses text and converts URLs to clickable links
+const formatTextWithLinks = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) => {
+        if (part.match(urlRegex)) {
+            return (
+                <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline break-all">
+                    {part}
+                </a>
+            );
+        }
+        return part;
+    });
+};
+
 // Simple Modal Component for Call Status
 const CallStatusModal = ({ status, onClose }: { status: "rejected" | "busy" | "timeout", onClose: () => void }) => (
     <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -64,31 +80,7 @@ const formatDateLabel = (dateString: string) => {
   if (now.getTime() - msgDate.getTime() < 7 * 24 * 60 * 60 * 1000) return date.toLocaleDateString([], { weekday: 'long' });
   return date.toLocaleDateString();
 };
-
 const getDirectRoomId = (id1: string, id2: string) => { return [id1, id2].sort().join('-'); };
-
-// 👇 NEW: Helper to detect URLs and render them as clickable links
-const renderMessageWithLinks = (text: string) => {
-  const urlRegex = /((?:https?:\/\/|www\.)[^\s]+)/g;
-  return text.split(urlRegex).map((part, index) => {
-    if (part.match(urlRegex)) {
-      const href = part.startsWith("www.") ? `https://${part}` : part;
-      return (
-        <a
-          key={index}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-400 hover:underline break-all relative z-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {part}
-        </a>
-      );
-    }
-    return part;
-  });
-};
 
 export default function ChatPage() {
   const { user } = useUser();
@@ -124,7 +116,7 @@ export default function ChatPage() {
   // Call Status Logic for Popup
   const [callStatusPopup, setCallStatusPopup] = useState<"rejected" | "busy" | "timeout" | null>(null);
 
-  // Ref to track if call is accepted
+  // Ref to track if call is accepted (Solves the auto-disconnect bug)
   const isCallAcceptedRef = useRef(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -402,19 +394,11 @@ export default function ChatPage() {
     typingTimeoutRef.current = setTimeout(() => { setIsTyping(false); socket.emit("stop_typing", { senderId: user?.id, receiverId: activeChatId }); }, 2000);
   };
 
-  // 👇 FIX: Robust online check that works with both array and object structures
-  const contactsWithStatus = contacts.map(c => {
-      // Check if ID exists in the onlineUsers list (handles if list is array of IDs or Objects)
-      const isOnline = Array.isArray(onlineUsers) 
-          ? onlineUsers.some(u => (typeof u === 'string' ? u === c.id : u.userId === c.id))
-          : false;
-
-      return {
-          ...c,
-          status: (isOnline ? "Online" : "Offline") as "Online" | "Offline",
-          lastMessage: lastMessages[c.id] || "Tap to chat"
-      };
-  });
+  const contactsWithStatus = contacts.map(c => ({
+      ...c,
+      status: (onlineUsers.includes(c.id) ? "Online" : "Offline") as "Online" | "Offline",
+      lastMessage: lastMessages[c.id] || "Tap to chat"
+  }));
 
   const filteredContacts = contactsWithStatus
     .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -433,7 +417,6 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-8rem)] rounded-2xl overflow-hidden border border-white/20 bg-black/10 backdrop-blur-xs shadow-2xl relative">
       
-      {/* RENDER CALL STATUS MODAL */}
       {callStatusPopup && <CallStatusModal status={callStatusPopup} onClose={() => setCallStatusPopup(null)} />}
 
       {/* SIDEBAR */}
@@ -468,8 +451,7 @@ export default function ChatPage() {
       {/* CHAT AREA */}
       <div className={cn("flex-1 flex flex-col bg-transparent h-full relative", !activeChatId ? "hidden md:flex" : "flex")}>
         
-        {/* CALL OVERLAY */}
-       {isInCall && callToken ? (
+        {isInCall && callToken ? (
           <div className="absolute inset-0 z-50 bg-black w-full h-full">
               <CallOverlay1on1
                   token={callToken}
@@ -480,7 +462,7 @@ export default function ChatPage() {
                   userAvatar={activeContact.avatar}
               />
           </div>
-      ) : (
+        ) : (
           activeChatId ? (
             <>
               {/* HEADER */}
@@ -530,8 +512,8 @@ export default function ChatPage() {
                                  <Download className="w-4 h-4 text-white/50" />
                              </a>
                           )}
-                          {/* 👇 UPDATED: Use the link renderer function */}
-                          {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{renderMessageWithLinks(m.text)}</p>}
+                          {/* 👇 UPDATED: Use helper to render links */}
+                          {m.type === 'text' && <p className="leading-relaxed whitespace-pre-wrap">{formatTextWithLinks(m.text)}</p>}
                           <div className="flex items-center justify-end gap-1 mt-1 opacity-50 select-none">
                               <span className="text-[10px] font-medium">{m.time}</span>
                               {isMe && <CheckCheck className={cn("w-3 h-3", m.status === 'read' ? "text-blue-400" : "text-white/50")} />}
@@ -545,12 +527,12 @@ export default function ChatPage() {
 
               {/* INPUT AREA */}
               <div className="p-4 bg-black/40 border-t border-white/10 relative z-30">
-                 {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme={Theme.DARK} onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
-                 {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1ad8] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
-                 
-                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
-                   {isRecording ? (
-                      <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
+                  {showEmojiPicker && <div className="absolute bottom-20 left-4 z-50"><EmojiPicker theme={Theme.DARK} onEmojiClick={(e) => setInputText(p => p + e.emoji)} /></div>}
+                  {showStickerPicker && <div className="absolute bottom-20 left-16 z-50 bg-[#1a1a1ad8] p-3 rounded-xl border border-white/10 shadow-2xl grid grid-cols-5 gap-2 w-64">{STICKERS.map(s => <button key={s} onClick={() => { sendMessagePayload(s, "sticker"); setShowStickerPicker(false); }} className="text-3xl hover:bg-white/10 p-2 rounded-lg">{s}</button>)}</div>}
+                  
+                  <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-2 py-2 shadow-inner transition-all">
+                    {isRecording ? (
+                       <div className="flex items-center justify-between w-full bg-[#1a1a1a] border border-red-500/20 p-2 rounded-full animate-in fade-in zoom-in duration-200 relative overflow-hidden">
                           <div className="absolute inset-0 bg-red-900/10 animate-pulse pointer-events-none" />
                           <div className="flex items-center gap-2 pl-4 z-10">
                               <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.6)]" />
@@ -558,9 +540,22 @@ export default function ChatPage() {
                           </div>
                           
                           <div className="flex items-center justify-center gap-1 h-8 flex-1 mx-4">
-                              <style>{` @keyframes wave { 0%, 100% { height: 15%; opacity: 0.3; } 50% { height: 70%; opacity: 1; } } `}</style>
+                              <style>{`
+                                  @keyframes wave {
+                                      0%, 100% { height: 15%; opacity: 0.3; }
+                                      50% { height: 70%; opacity: 1; }
+                                  }
+                              `}</style>
                               {[...Array(12)].map((_, i) => (
-                                  <div key={i} className="w-1 bg-red-500 rounded-full opacity-80" style={{ animation: `wave 1s ease-in-out infinite`, animationDelay: `${i * 0.1}s`, height: '100%' }} />
+                                  <div 
+                                      key={i} 
+                                      className="w-1 bg-red-500 rounded-full opacity-80"
+                                      style={{
+                                          animation: `wave 1s ease-in-out infinite`,
+                                          animationDelay: `${i * 0.1}s`,
+                                          height: '100%' 
+                                      }}
+                                  />
                               ))}
                           </div>
 
@@ -568,22 +563,22 @@ export default function ChatPage() {
                               <button onClick={cancelRecording} className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-full transition-all cursor-pointer"><Trash2 className="w-5 h-5" /></button>
                               <button onClick={stopRecording} className="w-10 h-10 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"><Send className="w-4 h-4 ml-0.5 fill-current" /></button>
                           </div>
-                      </div>
-                   ) : (
-                       <>
-                           <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400 cursor-pointer"><Smile className="w-6 h-6" /></button>
-                           <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400 cursor-pointer"><Sticker className="w-5 h-5" /></button>
-                           <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400 cursor-pointer"><Paperclip className="w-5 h-5" /></button>
-                           <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
-                           <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
-                           {inputText.trim() ? (
+                       </div>
+                    ) : (
+                        <>
+                            <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 text-white/50 hover:text-yellow-400 cursor-pointer"><Smile className="w-6 h-6" /></button>
+                            <button onClick={() => setShowStickerPicker(!showStickerPicker)} className="p-2 text-white/50 hover:text-pink-400 cursor-pointer"><Sticker className="w-5 h-5" /></button>
+                            <button onClick={() => fileInputRef.current?.click()} className="p-2 text-white/50 hover:text-blue-400 cursor-pointer"><Paperclip className="w-5 h-5" /></button>
+                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*, .pdf, .doc, .docx" onChange={handleFileUpload} />
+                            <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm py-2 min-w-0" placeholder="Message..." value={inputText} onChange={handleInputChange} onKeyDown={(e) => e.key === "Enter" && handleSendMessage()} />
+                            {inputText.trim() ? (
                                <button onClick={handleSendMessage} className="p-2.5 rounded-xl bg-indigo-600 text-white cursor-pointer"><Send className="w-4 h-4" /></button>
-                           ) : (
+                            ) : (
                                <button onClick={startRecording} className="p-2 rounded-full text-white/50 hover:text-red-400 hover:bg-white/5 transition cursor-pointer"><Mic className="w-5 h-5" /></button>
-                           )}
-                       </>
-                   )}
-                 </div>
+                            )}
+                        </>
+                    )}
+                  </div>
               </div>
             </>
           ) : (

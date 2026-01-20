@@ -19,7 +19,6 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 // Track Online Users (Map: userId -> { socketId, name, avatar })
-// 👇 UPDATED: Stores full object now
 const onlineUsers = new Map();
 
 // Track Active Meetings (Map: roomId -> { hostSocketId, hostUserId, waitingUsers: Set })
@@ -38,37 +37,57 @@ app.prepare().then(() => {
   io.on("connection", (socket) => {
     
     // ============================================================
-    // 0. AUTO-JOIN ON CONNECTION
+    // 0. AUTO-JOIN ON CONNECTION & METADATA SYNC
     // ============================================================
-    // 👇 Extract extra details from query
     const { userId, userName, userAvatar } = socket.handshake.query;
     
     if (userId) {
         socket.join(userId);
         
-        // 👇 UPDATED: Store Name and Avatar
+        // Store Name and Avatar
         onlineUsers.set(userId, { 
             socketId: socket.id, 
             name: userName || "Unknown User", 
             avatar: userAvatar || "" 
         });
         
-        console.log(`✅ User ${userId} (${userName}) connected (Auto-Join).`);
+        console.log(`✅ User ${userId} (${userName}) connected.`);
         
-        // 👇 UPDATED: Broadcast full user details
+        // Broadcast full user details to update lists immediately
         io.emit("user_status_update", { 
             userId: userId, 
             status: "Online",
             user: { name: userName, avatar: userAvatar } 
         });
         
-        // 👇 UPDATED: Send Full Map Entries [id, data]
+        // Send Full Map Entries to the connecting user
         socket.emit("current_online_list", Array.from(onlineUsers.entries()));
     }
 
-    // 👇 MANUAL REQUEST HANDLER (Updated to send full data)
+    // 👇 NEW: Explicit listener to update metadata (fixing the Gatekeeper sync issue)
+    // 👇 UPDATED: Listener to sync metadata AND send the list to late-joiners
+        socket.on("update_user_metadata", ({ userId, name, avatar }) => {
+            if (userId) {
+                socket.join(userId); // Ensure they join their own room!
+
+                onlineUsers.set(userId, { socketId: socket.id, name, avatar });
+                
+                console.log(`✅ User ${userId} identified via metadata event.`);
+
+                // 1. Tell everyone else this user is now online
+                io.emit("user_status_update", { 
+                    userId, 
+                    status: "Online",
+                    user: { name, avatar } 
+                });
+
+                // 2. 👇 CRITICAL FIX: Send the online list to THIS user now
+                // (Because they missed it during the initial anonymous connection)
+                socket.emit("current_online_list", Array.from(onlineUsers.entries()));
+            }
+        });
+
     socket.on("request_online_users", () => {
-        console.log(`⚡ Socket ${socket.id} requested list.`);
         socket.emit("current_online_list", Array.from(onlineUsers.entries()));
     });
 
@@ -77,12 +96,9 @@ app.prepare().then(() => {
     // ============================================================
     socket.on("join", (userId) => {
       socket.join(userId); 
-      // Fallback if name/avatar not provided
       if (!onlineUsers.has(userId)) {
           onlineUsers.set(userId, { socketId: socket.id, name: "User", avatar: "" });
       }
-      console.log(`User ${userId} came online (Manual Join).`);
-      
       io.emit("user_status_update", { userId, status: "Online" });
       socket.emit("current_online_list", Array.from(onlineUsers.entries()));
     });
@@ -242,7 +258,6 @@ app.prepare().then(() => {
     // ============================================================
     socket.on("disconnect", () => {
       // Cleanup Online Users
-      // 👇 UPDATED: Logic to handle object values
       for (const [userId, userData] of onlineUsers.entries()) {
         if (userData.socketId === socket.id) {
           onlineUsers.delete(userId);
