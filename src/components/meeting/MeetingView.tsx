@@ -12,13 +12,14 @@ import {
   useIsSpeaking,
   VideoTrack,
 } from "@livekit/components-react";
-import { Track, ConnectionState } from "livekit-client"; 
+import { Track, ConnectionState, Room } from "livekit-client"; 
 import "@livekit/components-styles";
 
 import {
   MessageSquare, Users, ShieldAlert, Crown, Copy, Check, X, Clock,
   PhoneOff, Maximize, Minimize, Ban, Pin, AlertTriangle, UserPlus, Send,
-  MoreVertical, Mic, MicOff, Video, VideoOff, Monitor, MoreHorizontal
+  Mic, MicOff, Video, VideoOff, Monitor, MoreHorizontal,
+  ChevronUp
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -65,7 +66,6 @@ export default function MeetingView({ token, roomId, isHost, onLeave, socket }: 
 
 function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; isHost: boolean; onLeave: () => void; socket: Socket }) {
   const room = useRoomContext();
-  const roomState = useConnectionState();
   const participants = useParticipants(); 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -79,6 +79,12 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenShare, setIsScreenShare] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+  // Device Selection State
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [showVideoMenu, setShowVideoMenu] = useState(false);
 
   // Meeting Logic
   const [hostIdentity, setHostIdentity] = useState<string>("");
@@ -113,12 +119,37 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
     return participants.filter(p => !kickedUserIds.has(p.identity));
   }, [participants, kickedUserIds]);
 
+  // --- DEVICE FETCHING ---
+  useEffect(() => {
+    const getDevices = async () => {
+      try {
+        const audio = await Room.getLocalDevices('audioinput');
+        const video = await Room.getLocalDevices('videoinput');
+        setAudioDevices(audio);
+        setVideoDevices(video);
+      } catch (e) { console.error("Error fetching devices", e); }
+    };
+    getDevices();
+    
+    navigator.mediaDevices.addEventListener('devicechange', getDevices);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', getDevices);
+  }, []);
+
+  const handleDeviceSelect = async (kind: MediaDeviceKind, deviceId: string) => {
+    await room.switchActiveDevice(kind, deviceId);
+    if (kind === 'audioinput') setShowAudioMenu(false);
+    if (kind === 'videoinput') setShowVideoMenu(false);
+  };
+
   // --- EFFECTS ---
   useEffect(() => {
     activeTabRef.current = activeTab;
     if (activeTab === "chat") setUnreadMessages(0);
-    // Close "More" menu when a tab opens
-    if (activeTab !== "none") setShowMoreMenu(false);
+    if (activeTab !== "none") {
+        setShowMoreMenu(false);
+        setShowAudioMenu(false);
+        setShowVideoMenu(false);
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -154,8 +185,6 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
            if (prev.some(u => u.socketId === data.socketId)) return prev;
            return [...prev, data];
        });
-       // Auto-open waiting tab if host is just sitting there? Maybe annoying.
-       // Instead we show a badge on the More button.
     };
 
     const handleGuestCancelled = ({ socketId }: { socketId: string }) => {
@@ -333,8 +362,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
       );
   }, [safeTracks, mainTrack]);
 
-  // Adjust grid limit based on device, but CSS handles layout
-  const visibleGridTracks = gridTracks.slice(0, 8); 
+  const visibleGridTracks = gridTracks.slice(0, 10); // Show more participants if grid allows
 
   return (
     <LayoutContextProvider>
@@ -349,8 +377,8 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Remove Participant?</h3>
                     <div className="flex gap-3 mt-6">
-                        <button onClick={() => setKickTarget(null)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition">Cancel</button>
-                        <button onClick={confirmKick} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition">Remove</button>
+                        <button onClick={() => setKickTarget(null)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition cursor-pointer">Cancel</button>
+                        <button onClick={confirmKick} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition cursor-pointer">Remove</button>
                     </div>
                 </div>
             </div>
@@ -363,8 +391,8 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">End Meeting?</h3>
                     <div className="flex gap-3 mt-6">
-                        <button onClick={() => setShowEndMeetingModal(false)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition">Cancel</button>
-                        <button onClick={confirmEndMeeting} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition">End All</button>
+                        <button onClick={() => setShowEndMeetingModal(false)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition cursor-pointer">Cancel</button>
+                        <button onClick={confirmEndMeeting} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition cursor-pointer">End All</button>
                     </div>
                 </div>
             </div>
@@ -380,7 +408,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                 <div className="absolute top-4 left-4 z-20 flex gap-2">
                     <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-mono flex items-center gap-2">
                         <span className="hidden sm:inline">ID:</span> {roomId.slice(0, 8)}...
-                        <button onClick={() => { navigator.clipboard.writeText(roomId); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="hover:text-red-400">
+                        <button onClick={() => { navigator.clipboard.writeText(roomId); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="hover:text-red-400 cursor-pointer">
                             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
                     </div>
@@ -402,16 +430,17 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             </div>
 
             {/* 2. PARTICIPANT GRID */}
-            {/* MOBILE: Horizontal Scroll at Bottom | DESKTOP: Vertical Scroll at Right */}
+            {/* MOBILE: Horizontal Scroll at Bottom | DESKTOP: 2-Column Grid at Right */}
             {visibleGridTracks.length > 0 && (
                 <div className={cn(
                     "bg-[#111] border-white/10 shrink-0",
-                    "w-full h-28 md:w-80 md:h-auto md:border-l p-2 md:p-3", // Responsive sizing
-                    "flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar" // Scroll direction
+                    "w-full h-28 md:w-96 md:h-auto md:border-l p-2 md:p-3", // Width set to 96 (384px) for desktop to fit 2 cols
+                    // 👇 THIS IS THE KEY LAYOUT CHANGE FOR DESKTOP
+                    "flex flex-row md:grid md:grid-cols-2 md:auto-rows-[110px] gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar" 
                 )}>
                     {visibleGridTracks.map((track) => (
                         <div key={track.publication?.trackSid || `${track.participant.identity}_${track.source}`} 
-                             className="relative rounded-xl overflow-hidden border border-white/10 shadow-md group bg-black shrink-0 w-36 h-full md:w-full md:h-32">
+                             className="relative rounded-xl overflow-hidden border border-white/10 shadow-md group bg-black shrink-0 w-36 h-full md:w-full md:h-full">
                             <CustomParticipantTile trackRef={track} isHost={isHost} isMain={false} onPin={() => setFocusedTrack(track)} onKick={requestKick} hostIdentity={hostIdentity} />
                         </div>
                     ))}
@@ -424,76 +453,101 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             "bg-[#121212] border-t border-white/10 p-4 z-40 shrink-0 transition-transform duration-300",
             activeTab !== "none" ? "translate-y-full md:translate-y-0" : "translate-y-0" // Hide on mobile if tab open
         )}>
-            <div className="flex items-center justify-between px-6 py-3 max-w-sm mx-auto bg-[#1a1a1a]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 max-w-sm mx-auto bg-[#1a1a1a]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl gap-2">
                 
                 {/* 1. MORE MENU (...) */}
                 <div className="relative">
-                    <button onClick={() => setShowMoreMenu(!showMoreMenu)} className={cn("p-3 rounded-lg transition-colors relative", showMoreMenu ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10")}>
+                    <button onClick={() => setShowMoreMenu(!showMoreMenu)} className={cn("p-3 rounded-lg transition-colors relative cursor-pointer", showMoreMenu ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10")}>
                         <MoreHorizontal className="w-6 h-6" />
-                        {/* Global Notification Dot for More Menu */}
                         {(unreadMessages > 0 || (isHost && waitingUsers.length > 0)) && (
                             <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-600 rounded-full border border-[#1a1a1a] animate-pulse"></span>
                         )}
                     </button>
 
-                    {/* POPUP MENU */}
                     {showMoreMenu && (
                          <div className="absolute bottom-full left-0 mb-4 bg-[#252525] border border-white/10 rounded-2xl shadow-xl p-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in z-50">
-                            {/* Chat */}
-                            <button onClick={() => setActiveTab("chat")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                            <button onClick={() => setActiveTab("chat")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer">
                                 <MessageSquare className="w-5 h-5 text-blue-400"/> Chat
                                 {unreadMessages > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadMessages}</span>}
                             </button>
-                            
-                            {/* Participants */}
-                            <button onClick={() => setActiveTab("participants")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                            <button onClick={() => setActiveTab("participants")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer">
                                 <Users className="w-5 h-5 text-purple-400"/> People
                             </button>
-
-                            {/* Invite */}
-                            <button onClick={() => setActiveTab("invite")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                            <button onClick={() => setActiveTab("invite")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer">
                                 <UserPlus className="w-5 h-5 text-green-400"/> Invite
                             </button>
-
-                            {/* Screen Share */}
-                            <button onClick={toggleScreenShare} className={cn("flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors", isScreenShare && "text-red-400")}>
+                            <button onClick={toggleScreenShare} className={cn("flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer", isScreenShare && "text-red-400")}>
                                 <Monitor className="w-5 h-5"/> {isScreenShare ? "Stop Sharing" : "Share Screen"}
                             </button>
-
-                            {/* Host: Waiting Room */}
                             {isHost && (
-                                <button onClick={() => setActiveTab("waiting")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                <button onClick={() => setActiveTab("waiting")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer">
                                     <ShieldAlert className="w-5 h-5 text-yellow-400"/> Waiting Room
                                     {waitingUsers.length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{waitingUsers.length}</span>}
                                 </button>
                             )}
-
-                            {/* Fullscreen */}
                             <div className="h-px bg-white/10 my-1"/>
-                            <button onClick={toggleFullscreen} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                            <button onClick={toggleFullscreen} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer">
                                 {isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>} {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                             </button>
                          </div>
                     )}
                 </div>
 
-                {/* 2. CAMERA */}
-                <button onClick={toggleCamera} className={cn("p-3 rounded-lg transition-colors", isVideoOn ? "bg-white/10 text-white" : "bg-white text-black")}>
-                    {isVideoOn ? <Video className="w-6 h-6"/> : <VideoOff className="w-6 h-6"/>}
-                </button>
+                {/* 2. CAMERA SPLIT BUTTON */}
+                <div className="relative flex items-center bg-white/5 rounded-lg p-1 gap-1 border border-white/5">
+                    <button onClick={toggleCamera} className={cn("p-2 rounded-md transition-colors cursor-pointer", isVideoOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                        {isVideoOn ? <Video className="w-5 h-5"/> : <VideoOff className="w-5 h-5"/>}
+                    </button>
+                    <button onClick={() => { setShowVideoMenu(!showVideoMenu); setShowAudioMenu(false); setShowMoreMenu(false); }} className="p-1 rounded-md text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
+                        <ChevronUp className="w-4 h-4" />
+                    </button>
+                    {showVideoMenu && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-[#252525] border border-white/10 rounded-xl shadow-xl p-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in z-50">
+                            <p className="px-3 py-1 text-[10px] font-bold text-white/40 uppercase tracking-wider">Select Camera</p>
+                            {videoDevices.map((device) => {
+                                const isActive = room.getActiveDevice('videoinput') === device.deviceId;
+                                return (
+                                    <button key={device.deviceId} onClick={() => handleDeviceSelect('videoinput', device.deviceId)} className={cn("flex items-center justify-between w-full text-left px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer", isActive ? "bg-red-600 text-white" : "text-white/80 hover:bg-white/10")}>
+                                        <span className="truncate max-w-[140px]">{device.label || `Camera ${device.deviceId.slice(0,4)}`}</span>
+                                        {isActive && <Check className="w-3 h-3 ml-2" />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
 
-                {/* 3. MIC */}
-                <button onClick={toggleMic} className={cn("p-3 rounded-lg transition-colors", isMicOn ? "bg-white/10 text-white" : "bg-white text-black")}>
-                    {isMicOn ? <Mic className="w-6 h-6"/> : <MicOff className="w-6 h-6"/>}
-                </button>
+                {/* 3. MIC SPLIT BUTTON */}
+                <div className="relative flex items-center bg-white/5 rounded-lg p-1 gap-1 border border-white/5">
+                    <button onClick={toggleMic} className={cn("p-2 rounded-md transition-colors cursor-pointer", isMicOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                        {isMicOn ? <Mic className="w-5 h-5"/> : <MicOff className="w-5 h-5"/>}
+                    </button>
+                    <button onClick={() => { setShowAudioMenu(!showAudioMenu); setShowVideoMenu(false); setShowMoreMenu(false); }} className="p-1 rounded-md text-white/70 hover:bg-white/10 hover:text-white transition-colors cursor-pointer">
+                        <ChevronUp className="w-4 h-4" />
+                    </button>
+                    {showAudioMenu && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-[#252525] border border-white/10 rounded-xl shadow-xl p-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in z-50">
+                            <p className="px-3 py-1 text-[10px] font-bold text-white/40 uppercase tracking-wider">Select Microphone</p>
+                            {audioDevices.map((device) => {
+                                const isActive = room.getActiveDevice('audioinput') === device.deviceId;
+                                return (
+                                    <button key={device.deviceId} onClick={() => handleDeviceSelect('audioinput', device.deviceId)} className={cn("flex items-center justify-between w-full text-left px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer", isActive ? "bg-red-600 text-white" : "text-white/80 hover:bg-white/10")}>
+                                        <span className="truncate max-w-[140px]">{device.label || `Mic ${device.deviceId.slice(0,4)}`}</span>
+                                        {isActive && <Check className="w-3 h-3 ml-2" />}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
 
                 {/* 4. END CALL */}
                 {isHost ? (
-                    <button onClick={handleEndMeetingForAll} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30">
+                    <button onClick={handleEndMeetingForAll} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 cursor-pointer">
                         <PhoneOff className="w-6 h-6" />
                     </button>
                 ) : (
-                    <button onClick={onLeave} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30">
+                    <button onClick={onLeave} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 cursor-pointer">
                         <PhoneOff className="w-6 h-6" />
                     </button>
                 )}
@@ -511,7 +565,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                     <h3 className="text-white font-bold capitalize flex items-center gap-2">
                         {activeTab === "waiting" ? "Waiting Room" : activeTab === "invite" ? "Invite Users" : activeTab}
                     </h3>
-                    <button onClick={() => setActiveTab("none")} className="p-2 hover:bg-white/10 rounded-full transition"><X className="w-6 h-6 text-white/70" /></button>
+                    <button onClick={() => setActiveTab("none")} className="p-2 hover:bg-white/10 rounded-full transition cursor-pointer"><X className="w-6 h-6 text-white/70" /></button>
                 </div>
 
                 {/* Sidebar Content */}
@@ -533,7 +587,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                                             <p className="text-[10px] text-white/40">{p.identity === hostIdentity ? "Host" : "Participant"}</p>
                                         </div>
                                         {isHost && !p.isLocal && (
-                                            <button onClick={() => requestKick(p.identity)} className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition" title="Kick User"><Ban className="w-4 h-4" /></button>
+                                            <button onClick={() => requestKick(p.identity)} className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition cursor-pointer" title="Kick User"><Ban className="w-4 h-4" /></button>
                                         )}
                                     </div>
                                 )
@@ -565,7 +619,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                                                      <p className="text-[10px] text-green-400">Online</p>
                                                  </div>
                                              </div>
-                                             <button onClick={() => handleSendInvite(u.userId)} disabled={isSent} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1", isSent ? "bg-green-500/20 text-green-500 cursor-default" : "bg-blue-600 hover:bg-blue-700 text-white")}>
+                                             <button onClick={() => handleSendInvite(u.userId)} disabled={isSent} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer", isSent ? "bg-green-500/20 text-green-500 cursor-default" : "bg-blue-600 hover:bg-blue-700 text-white")}>
                                                  {isSent ? <Check className="w-3 h-3" /> : <Send className="w-3 h-3" />} {isSent ? "Sent" : "Invite"}
                                              </button>
                                          </div>
@@ -589,8 +643,8 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleAdmit(req.socketId)} className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg">Admit</button>
-                                        <button onClick={() => handleReject(req.socketId)} className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg">Deny</button>
+                                        <button onClick={() => handleAdmit(req.socketId)} className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Admit</button>
+                                        <button onClick={() => handleReject(req.socketId)} className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Deny</button>
                                     </div>
                                 </div>
                             ))}
