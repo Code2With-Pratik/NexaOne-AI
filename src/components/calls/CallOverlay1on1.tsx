@@ -84,8 +84,8 @@ const ParticipantView = ({ participant, track, avatar, name, isLocal, onClick, o
         >
             {track && participant ? (
                 <>
+                    {/* 👇 FIX: Removed 'participant={participant}' prop */}
                     <ParticipantTile 
-                        participant={participant}
                         trackRef={track} 
                         className="w-full h-full object-cover" 
                         disableSpeakingIndicator={true}
