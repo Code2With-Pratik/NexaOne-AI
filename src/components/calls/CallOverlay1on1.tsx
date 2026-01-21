@@ -11,9 +11,12 @@ import {
   useParticipants,
   useIsSpeaking,
 } from '@livekit/components-react';
-import { Track, Participant } from 'livekit-client';
+import { Track, Participant, Room } from 'livekit-client';
 import '@livekit/components-styles';
-import { PhoneOff, Video, VideoOff, Mic, MicOff, Monitor, MessageSquare, X, Send, Maximize, Minimize } from 'lucide-react';
+import { 
+  PhoneOff, Video, VideoOff, Mic, MicOff, Monitor, 
+  MessageSquare, X, Send, RefreshCcw, MoreHorizontal, Maximize, Minimize 
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSocket } from "@/providers/SocketProvider";
 import { useUser } from '@clerk/nextjs';
@@ -53,63 +56,93 @@ export default function CallOverlay1on1({ token, roomName, onDisconnect, initial
   );
 }
 
-// --- SUB-COMPONENT: REMOTE PARTICIPANT VIEW ---
-const RemoteParticipantView = ({ participant, track, avatar, name }: { participant: Participant, track?: any, avatar: string, name: string }) => {
+// --- SUB-COMPONENT: PARTICIPANT VIEW ---
+interface ParticipantViewProps {
+    participant?: Participant;
+    track?: any;
+    avatar: string;
+    name: string;
+    isLocal: boolean;
+    onClick?: () => void;
+    onFlipCamera?: () => void; 
+    className?: string;
+}
+
+const ParticipantView = ({ participant, track, avatar, name, isLocal, onClick, onFlipCamera, className }: ParticipantViewProps) => {
     const isSpeaking = useIsSpeaking(participant);
 
     return (
-        <div className={cn(
-            "w-full h-full transition-all duration-300 relative",
-            isSpeaking ? "ring-4 ring-inset ring-red-500 shadow-[inset_0_0_50px_rgba(220,38,38,0.5)]" : ""
-        )}>
-            {track ? (
-                <ParticipantTile 
-                    trackRef={track} 
-                    className="w-full h-full object-cover" 
-                    disableSpeakingIndicator={true}
-                />
+        <div 
+            onClick={onClick}
+            className={cn(
+                "relative overflow-hidden transition-all duration-300 bg-zinc-900 group",
+                onClick ? "cursor-pointer" : "",
+                isSpeaking && !isLocal ? "ring-4 ring-inset ring-red-600" : "",
+                isSpeaking && isLocal ? "border-2 border-red-600" : "border border-white/10",
+                className
+            )}
+        >
+            {track && participant ? (
+                <>
+                    <ParticipantTile 
+                        participant={participant}
+                        trackRef={track} 
+                        className="w-full h-full object-cover" 
+                        disableSpeakingIndicator={true}
+                    />
+                    
+                    {/* FLIP CAMERA BUTTON - ONLY FOR LOCAL USER */}
+                    {isLocal && onFlipCamera && (
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation(); // Stop bubbling to prevent swapping view
+                                onFlipCamera();
+                            }}
+                            className="absolute top-2 right-2 p-2 bg-black/50 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition-all z-30 cursor-pointer"
+                            title="Flip Camera"
+                        >
+                            <RefreshCcw className="w-4 h-4" />
+                        </button>
+                    )}
+                </>
             ) : (
-                /* Camera Off -> Show Avatar */
-                <div className="w-full h-full flex items-center justify-center flex-col gap-4">
-                    <div className={cn("relative p-1 rounded-full", isSpeaking && "animate-pulse ring-4 ring-red-500")}>
-                        {/* 👇 FIX: Check if avatar exists before rendering img */}
+                /* Camera Off State */
+                <div className="w-full h-full flex items-center justify-center flex-col gap-3 p-4 text-center">
+                    <div className={cn("relative p-1 rounded-full", isSpeaking && "animate-pulse ring-4 ring-red-600")}>
                         {avatar ? (
                             <img 
                                 src={avatar} 
                                 alt={name} 
-                                className="w-32 h-32 rounded-full object-cover bg-zinc-800" 
+                                className={cn("rounded-full object-cover bg-zinc-800", isLocal ? "w-12 h-12" : "w-24 h-24")} 
                             />
                         ) : (
-                            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-4xl font-bold text-white border-4 border-white/10">
+                            <div className={cn(
+                                "rounded-full bg-gradient-to-br from-red-500 to-red-900 flex items-center justify-center font-bold text-white border-4 border-white/10",
+                                isLocal ? "w-12 h-12 text-lg" : "w-24 h-24 text-3xl"
+                            )}>
                                 {name?.charAt(0).toUpperCase() || "?"}
                             </div>
                         )}
                     </div>
-                    <p className="text-white text-2xl font-bold">{name}</p>
-                    <p className="text-white/40 text-sm">Camera Off</p>
+                    {/* Only show name on remote or large view to save space on local PiP */}
+                    {(!isLocal) && (
+                        <div>
+                            <p className="text-white text-lg font-bold">{name}</p>
+                            <p className="text-white/40 text-xs">Camera Off</p>
+                        </div>
+                    )}
+
+                    {/* Show flip button even if camera is off, so they can switch before turning on */}
+                    {isLocal && onFlipCamera && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onFlipCamera(); }}
+                            className="absolute top-2 right-2 p-2 bg-white/10 text-white rounded-full z-30 cursor-pointer"
+                        >
+                            <RefreshCcw className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             )}
-        </div>
-    );
-};
-
-// --- SUB-COMPONENT: LOCAL PARTICIPANT VIEW ---
-const LocalParticipantView = ({ participant, track }: { participant: Participant, track?: any }) => {
-    const isSpeaking = useIsSpeaking(participant);
-
-    return (
-        <div className={cn(
-            "w-full h-full rounded-xl overflow-hidden border border-white/20 shadow-2xl bg-black transition-all hover:scale-105",
-            isSpeaking ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]" : ""
-        )}>
-             {track ? (
-                 <ParticipantTile trackRef={track} className="w-full h-full object-cover" />
-             ) : (
-                 <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-white/50 text-xs flex-col">
-                     <div className="w-8 h-8 rounded-full bg-white/10 mb-2" />
-                     Camera Off
-                 </div>
-             )}
         </div>
     );
 };
@@ -120,13 +153,22 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
     const room = useRoomContext();
     const containerRef = useRef<HTMLDivElement>(null);
     
-    // Call Controls
+    // Controls
     const [isVideoOn, setIsVideoOn] = useState(initialVideo);
     const [isMicOn, setIsMicOn] = useState(true);
     const [isScreenShare, setIsScreenShare] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     
-    // Chat State
+    // "More" Menu State (The 3 dots menu)
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+    // Camera Flip State
+    const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+    
+    // View Pinning
+    const [pinnedIdentity, setPinnedIdentity] = useState<string | null>(null);
+
+    // Chat
     const [showChat, setShowChat] = useState(false);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState("");
@@ -134,7 +176,7 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
     const showChatRef = useRef(false);
     const chatScrollRef = useRef<HTMLDivElement>(null);
 
-    // --- TRACKS & PARTICIPANTS ---
+    // --- TRACKS ---
     const tracks = useTracks(
       [Track.Source.Camera, Track.Source.ScreenShare],
       { onlySubscribed: false },
@@ -144,16 +186,61 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
     const remoteParticipant = participants.find(p => !p.isLocal);
     const localParticipant = participants.find(p => p.isLocal);
 
-    // Identify Tracks
-    const localTrack = tracks.find(t => t.participant.isLocal && t.source === Track.Source.Camera);
-    const remoteScreenShare = tracks.find(t => !t.participant.isLocal && t.source === Track.Source.ScreenShare);
-    const remoteCamera = tracks.find(t => !t.participant.isLocal && t.source === Track.Source.Camera);
-    const mainTrack = remoteScreenShare || remoteCamera;
+    const localCameraTrack = tracks.find(t => t.participant.isLocal && t.source === Track.Source.Camera);
+    const localScreenTrack = tracks.find(t => t.participant.isLocal && t.source === Track.Source.ScreenShare);
+    const remoteCameraTrack = tracks.find(t => !t.participant.isLocal && t.source === Track.Source.Camera);
+    const remoteScreenTrack = tracks.find(t => !t.participant.isLocal && t.source === Track.Source.ScreenShare);
+
+    // --- VIEW ASSIGNMENT ---
+    // Default: Remote = Main, Local = PiP
+    let mainParticipant = remoteParticipant;
+    let mainTrack = remoteScreenTrack || remoteCameraTrack;
+    let pipParticipant = localParticipant;
+    let pipTrack = localScreenTrack || localCameraTrack;
+
+    // If Pinned Local (User wants to see themselves big)
+    if (pinnedIdentity && localParticipant && pinnedIdentity === localParticipant.identity) {
+        mainParticipant = localParticipant;
+        mainTrack = localScreenTrack || localCameraTrack;
+        pipParticipant = remoteParticipant;
+        pipTrack = remoteScreenTrack || remoteCameraTrack;
+    }
+
+    // Function to swap views when clicking the small box
+    const handleSwapViews = () => {
+        if (pinnedIdentity === localParticipant?.identity) {
+            setPinnedIdentity(null); 
+        } else if (localParticipant) {
+            setPinnedIdentity(localParticipant.identity);
+        }
+    };
+
+    // --- DEVICE LOGIC (For Flip Camera) ---
+    useEffect(() => {
+        const getDevices = async () => {
+            try {
+                const devices = await Room.getLocalDevices('videoinput');
+                setVideoDevices(devices);
+            } catch (e) { console.error(e); }
+        };
+        getDevices();
+    }, []);
+
+    const flipCamera = async () => {
+        if (videoDevices.length < 2) return;
+        const currentDeviceId = room.getActiveDevice('videoinput');
+        const currentIndex = videoDevices.findIndex(d => d.deviceId === currentDeviceId);
+        const nextIndex = (currentIndex + 1) % videoDevices.length;
+        await room.switchActiveDevice('videoinput', videoDevices[nextIndex].deviceId);
+    };
 
     // --- CHAT LOGIC ---
     useEffect(() => {
         showChatRef.current = showChat;
-        if (showChat) setUnreadCount(0);
+        if (showChat) {
+            setUnreadCount(0);
+            setShowMoreMenu(false); // Close the "..." menu if chat opens
+        }
     }, [showChat]);
     
     useEffect(() => {
@@ -186,7 +273,7 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
         }
     };
 
-    // --- TOGGLES ---
+    // --- ACTION TOGGLES ---
     const toggleVideo = async () => {
         const enabled = room.localParticipant.isCameraEnabled;
         await room.localParticipant.setCameraEnabled(!enabled);
@@ -203,6 +290,7 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
         const enabled = room.localParticipant.isScreenShareEnabled;
         await room.localParticipant.setScreenShareEnabled(!enabled);
         setIsScreenShare(!enabled);
+        setShowMoreMenu(false); // Close menu after selection
     };
 
     const toggleFullscreen = () => {
@@ -217,110 +305,173 @@ function CustomCallLayout({ initialVideo, roomName, userName, userAvatar }: { in
 
   return (
     <LayoutContextProvider>
-      <div ref={containerRef} className="relative h-full w-full flex flex-row bg-black overflow-hidden group">
+      <div ref={containerRef} className="relative h-full w-full flex flex-row bg-black overflow-hidden font-sans">
         
-        {/* === LEFT AREA (VIDEO) === */}
+        {/* =========================================
+            MAIN CONTENT AREA
+           ========================================= */}
         <div className="flex-1 relative flex flex-col min-w-0">
             
-            {/* 1. REMOTE USER (MAIN FULLSCREEN) */}
+            {/* 1. FULLSCREEN VIEW (Remote by default) */}
             <div className="absolute inset-0 flex items-center justify-center bg-[#121212]">
-                {remoteParticipant ? (
-                    <RemoteParticipantView 
-                        participant={remoteParticipant} 
+                {mainParticipant ? (
+                    <ParticipantView 
+                        participant={mainParticipant}
                         track={mainTrack}
-                        avatar={userAvatar}
-                        name={userName}
+                        name={mainParticipant.isLocal ? "You" : userName}
+                        avatar={mainParticipant.isLocal ? (user?.imageUrl || "") : userAvatar}
+                        isLocal={mainParticipant.isLocal}
+                        onFlipCamera={mainParticipant.isLocal ? flipCamera : undefined}
+                        className="w-full h-full"
                     />
                 ) : (
-                    /* Waiting For User */
+                    /* Loading / Waiting UI */
                     <div className="flex flex-col items-center justify-center gap-4 opacity-70 animate-pulse">
-                         {/* 👇 FIX: Conditional rendering for Avatar or Fallback Initials */}
                          {userAvatar ? (
                              <img src={userAvatar} className="w-24 h-24 rounded-full object-cover border-4 border-white/10" alt={userName} />
                          ) : (
-                             <div className="w-24 h-24 rounded-full bg-zinc-800 border-4 border-white/10 flex items-center justify-center">
-                                <span className="text-3xl font-bold text-white">{userName?.charAt(0).toUpperCase() || "?"}</span>
+                             <div className="w-24 h-24 rounded-full bg-zinc-800 border-4 border-white/10 flex items-center justify-center text-3xl font-bold text-white">
+                                {userName?.charAt(0).toUpperCase() || "?"}
                              </div>
                          )}
-                        
-                        <div className="text-center">
-                            <h3 className="text-white text-xl font-bold">Calling {userName}...</h3>
-                            <p className="text-white/50 text-sm">Waiting for them to join</p>
-                        </div>
+                         <div className="text-center">
+                             <h3 className="text-white text-xl font-bold">Calling {userName}...</h3>
+                             <p className="text-white/50 text-sm">Waiting for response</p>
+                         </div>
                     </div>
                 )}
             </div>
 
-            {/* 2. LOCAL USER (PIP - BOTTOM RIGHT) */}
-            <div className="absolute bottom-24 right-4 z-20 w-28 md:w-56 aspect-video">
-                 {localParticipant && (
-                    <LocalParticipantView participant={localParticipant} track={localTrack} />
-                 )}
-            </div>
+            {/* 2. PIP VIEW (Local by default) */}
+            {pipParticipant && (
+                <div className={cn(
+                    "absolute right-4 z-40 w-28 aspect-[3/4] md:w-56 md:aspect-video rounded-xl shadow-2xl overflow-hidden border border-white/20 transition-all ease-in-out duration-300",
+                    showChat ? "bottom-32 md:bottom-24" : "bottom-24" // Move up slightly if chat needs space, though tray hides now
+                )}>
+                    <ParticipantView 
+                        participant={pipParticipant}
+                        track={pipTrack}
+                        name={pipParticipant.isLocal ? "You" : userName}
+                        avatar={pipParticipant.isLocal ? (user?.imageUrl || "") : userAvatar}
+                        isLocal={pipParticipant.isLocal}
+                        onClick={handleSwapViews}
+                        onFlipCamera={pipParticipant.isLocal ? flipCamera : undefined}
+                        className="w-full h-full cursor-pointer hover:opacity-90"
+                    />
+                </div>
+            )}
 
-            {/* 3. CONTROL BAR */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-3 p-3 bg-[#1a1a1a]/90 rounded-2xl border border-white/10 backdrop-blur-md shadow-2xl z-50 max-w-[95vw] overflow-x-auto custom-scrollbar opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
-                <button onClick={toggleMic} className={cn("p-3 md:p-3.5 rounded-xl transition-all shrink-0 cursor-pointer", isMicOn ? "bg-white/10 hover:bg-white/20 text-white" : "bg-red-500/10 text-red-500 border border-red-500/50")}>
-                        {isMicOn ? <Mic className="w-5 h-5"/> : <MicOff className="w-5 h-5"/>}
-                </button>
-                <button onClick={toggleVideo} className={cn("p-3 md:p-3.5 rounded-xl transition-all shrink-0 cursor-pointer", isVideoOn ? "bg-white/10 hover:bg-white/20 text-white" : "bg-red-500/10 text-red-500 border border-red-500/50")}>
-                        {isVideoOn ? <Video className="w-5 h-5"/> : <VideoOff className="w-5 h-5"/>}
-                </button>
-                <button onClick={toggleScreenShare} className={cn("p-3 md:p-3.5 rounded-xl transition-all shrink-0 cursor-pointer", isScreenShare ? "bg-red-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.4)]" : "bg-white/10 hover:bg-white/20 text-white")}>
-                        <Monitor className="w-5 h-5" />
-                </button>
-                <button onClick={() => setShowChat(!showChat)} className={cn("p-3 md:p-3.5 rounded-xl transition-all relative shrink-0 cursor-pointer", showChat ? "bg-red-600 text-white" : "bg-white/10 hover:bg-white/20 text-white")}>
-                        <MessageSquare className="w-5 h-5" />
-                        {unreadCount > 0 && <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-[#1a1a1a] animate-bounce">{unreadCount}</div>}
-                </button>
-                <div className="w-px h-8 bg-white/10 mx-1 shrink-0"></div>
-                <button onClick={toggleFullscreen} className="p-3 md:p-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all shrink-0 cursor-pointer">
-                     {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-                </button>
-                <button onClick={() => room.disconnect()} className="px-5 py-3 md:px-6 md:py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all shadow-lg shadow-red-600/20 flex items-center gap-2 shrink-0 cursor-pointer">
-                    <PhoneOff className="w-5 h-5" />
-                    <span className="hidden sm:inline">End</span>
-                </button>
+            {/* 3. MOBILE-STYLE BOTTOM TRAY (Fixed 5 Icons) */}
+            {/* Logic: If chat is Open on mobile, this tray slides DOWN out of view to make space for keyboard/input */}
+            <div className={cn(
+                "absolute bottom-0 left-0 w-full z-50 p-4 transition-transform duration-300 ease-in-out",
+                showChat ? "translate-y-[120%] md:translate-y-0" : "translate-y-0"
+            )}>
+                {/* The Tray Container - Wider for 5 buttons */}
+                <div className="flex items-center justify-between px-6 py-3 max-w-md mx-auto bg-[#1a1a1a]/95 backdrop-blur-md border-2 border-white/5 rounded-lg shadow-2xl gap-2 md:gap-4">
+                    
+                    {/* BUTTON 1: MORE (...) */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => setShowMoreMenu(!showMoreMenu)}
+                            className={cn("p-3 rounded-lg transition-colors cursor-pointer", showMoreMenu ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10")}
+                        >
+                            <MoreHorizontal className="w-5 h-5 md:w-6 md:h-6" />
+                        </button>
+
+                        {/* Popup Menu */}
+                        {showMoreMenu && (
+                            <div className="absolute bottom-full left-0 mb-4 bg-[#252525] border border-white/10 rounded-2xl shadow-xl p-2 min-w-[180px] animate-in slide-in-from-bottom-2 fade-in z-50">
+                                <button 
+                                    onClick={() => setShowChat(true)} 
+                                    className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer"
+                                >
+                                    <MessageSquare className="w-5 h-5 text-red-500"/> Chat
+                                    {unreadCount > 0 && <span className="ml-auto bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+                                </button>
+                                <button 
+                                    onClick={toggleScreenShare} 
+                                    className={cn("flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors cursor-pointer", isScreenShare && "text-red-500")}
+                                >
+                                    <Monitor className="w-5 h-5"/> {isScreenShare ? "Stop Sharing" : "Share Screen"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* BUTTON 2: VIDEO */}
+                    <button onClick={toggleVideo} className={cn("p-3 rounded-lg transition-colors cursor-pointer", isVideoOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                        {isVideoOn ? <Video className="w-5 h-5 md:w-6 md:h-6"/> : <VideoOff className="w-5 h-5 md:w-6 md:h-6"/>}
+                    </button>
+
+                    {/* BUTTON 3: MIC */}
+                    <button onClick={toggleMic} className={cn("p-3 rounded-lg transition-colors cursor-pointer", isMicOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                        {isMicOn ? <Mic className="w-5 h-5 md:w-6 md:h-6"/> : <MicOff className="w-5 h-5 md:w-6 md:h-6"/>}
+                    </button>
+
+                    {/* BUTTON 4: FULLSCREEN (New) */}
+                    <button onClick={toggleFullscreen} className="p-3 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer">
+                        {isFullscreen ? <Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Maximize className="w-5 h-5 md:w-6 md:h-6" />}
+                    </button>
+
+                    {/* BUTTON 5: END CALL */}
+                    <button onClick={() => room.disconnect()} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 cursor-pointer">
+                        <PhoneOff className="w-6 h-6 md:w-6 md:h-6" />
+                    </button>
+                </div>
             </div>
         </div>
 
-        {/* RIGHT AREA (CHAT) */}
+        {/* =========================================
+            CHAT OVERLAY
+           ========================================= */}
         {showChat && (
             <div className={cn(
-                "border-l border-white/10 bg-[#121212] z-40 animate-in slide-in-from-right duration-300 flex flex-col shadow-2xl",
-                "fixed inset-y-0 right-0 w-full md:relative md:w-96" 
+                "fixed inset-0 z-[60] flex flex-col bg-[#121212] md:relative md:w-96 md:border-l md:border-white/10 animate-in slide-in-from-right duration-300"
             )}>
-               <div className="p-4 flex justify-between items-center border-b border-white/10 bg-[#1a1a1a]">
+               {/* Header */}
+               <div className="p-4 flex justify-between items-center border-b border-white/10 bg-[#1a1a1a] safe-area-top">
                    <h3 className="font-bold text-white flex items-center gap-2">
                        <MessageSquare className="w-4 h-4 text-red-500"/> In-Call Chat
                    </h3>
-                   <button onClick={() => setShowChat(false)} className="hover:bg-white/10 p-1 rounded-lg transition cursor-pointer">
-                       <X className="w-5 h-5 text-white/50 hover:text-white"/>
+                   <button onClick={() => setShowChat(false)} className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition cursor-pointer">
+                       <X className="w-6 h-6"/>
                    </button>
                </div>
 
-               <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" ref={chatScrollRef}>
+               {/* Messages */}
+               <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar" ref={chatScrollRef}>
                    {messages.length === 0 ? (
-                       <div className="h-full flex flex-col items-center justify-center text-white/50 text-sm gap-2">
-                           <MessageSquare className="w-8 h-8 opacity-50"/> <p>No messages yet</p>
+                       <div className="h-full flex flex-col items-center justify-center text-white/30 gap-2">
+                           <MessageSquare className="w-12 h-12 opacity-20"/> <p>No messages yet</p>
                        </div>
                    ) : (
                        messages.map((msg) => (
                            <div key={msg.id} className={cn("flex flex-col", msg.isMe ? "items-end" : "items-start")}>
-                               <div className={cn("max-w-[85%] p-3 rounded-2xl text-sm relative group shadow-sm", msg.isMe ? "bg-red-600 text-white rounded-tr-none" : "bg-[#252525] text-white/90 rounded-tl-none border border-white/5")}>
-                                   {!msg.isMe && <p className="text-[10px] text-red-300 font-bold mb-1">{msg.senderName}</p>}
-                                   <p className="leading-relaxed">{msg.text}</p>
-                                   <span className="text-[8px] opacity-70 block text-right mt-1">{msg.time}</span>
+                               <div className={cn("max-w-[85%] px-4 py-3 rounded-2xl text-sm shadow-sm", msg.isMe ? "bg-red-600 text-white rounded-tr-sm" : "bg-[#2a2a2a] text-white/90 rounded-tl-sm")}>
+                                   {!msg.isMe && <p className="text-[10px] text-red-300 font-bold mb-1 opacity-70">{msg.senderName}</p>}
+                                   <p>{msg.text}</p>
+                                   <span className="text-[9px] opacity-50 block text-right mt-1">{msg.time}</span>
                                </div>
                            </div>
                        ))
                    )}
                </div>
 
-               <div className="p-3 bg-[#1a1a1a] border-t border-white/10">
-                   <div className="flex items-center gap-2 bg-[#252525] border border-white/10 rounded-xl px-3 py-2 focus-within:border-red-500/50 transition-all">
-                       <input type="text" className="flex-1 bg-transparent border-none focus:outline-none text-white text-sm placeholder:text-white/30" placeholder="Type a message..." value={inputText} onChange={(e) => setInputText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
-                       <button onClick={handleSendMessage} disabled={!inputText.trim()} className="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"><Send className="w-4 h-4" /></button>
+               {/* Input Area */}
+               <div className="p-3 bg-[#1a1a1a] border-t border-white/10 safe-area-bottom">
+                   <div className="flex items-center gap-2 bg-[#252525] rounded-lg px-4 py-3 border border-white/5 focus-within:border-red-500/50 transition-all">
+                       <input 
+                           type="text" 
+                           className="flex-1 bg-transparent border-none focus:outline-none text-white text-base placeholder:text-white/30" 
+                           placeholder="Type a message..." 
+                           value={inputText} 
+                           onChange={(e) => setInputText(e.target.value)} 
+                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} 
+                       />
+                       <button onClick={handleSendMessage} disabled={!inputText.trim()} className="p-2 bg-red-600 rounded-full text-white disabled:opacity-50 disabled:bg-gray-700 transition cursor-pointer">
+                           <Send className="w-4 h-4" />
+                       </button>
                    </div>
                </div>
             </div>
