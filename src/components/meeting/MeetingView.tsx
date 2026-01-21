@@ -9,7 +9,6 @@ import {
   useTracks,
   useConnectionState, 
   ParticipantTile,
-  ControlBar,
   useIsSpeaking,
   VideoTrack,
 } from "@livekit/components-react";
@@ -18,13 +17,15 @@ import "@livekit/components-styles";
 
 import {
   MessageSquare, Users, ShieldAlert, Crown, Copy, Check, X, Clock,
-  PhoneOff, Maximize, Minimize, Ban, Pin, AlertTriangle, UserPlus, Send
+  PhoneOff, Maximize, Minimize, Ban, Pin, AlertTriangle, UserPlus, Send,
+  MoreVertical, Mic, MicOff, Video, VideoOff, Monitor, MoreHorizontal
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import InCallChatSidebar from "@/components/calls/InCallChatSidebar";
 import { Socket } from "socket.io-client";
 
+// --- TYPES ---
 interface MeetingViewProps {
   token: string;
   roomId: string;
@@ -68,23 +69,32 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
   const participants = useParticipants(); 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Layout & Tabs
   const [activeTab, setActiveTab] = useState<ActiveTab>("none");
   const activeTabRef = useRef<ActiveTab>("none");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Controls & State
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isScreenShare, setIsScreenShare] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+  // Meeting Logic
   const [hostIdentity, setHostIdentity] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [waitingUsers, setWaitingUsers] = useState<WaitingUser[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   
   const [kickTarget, setKickTarget] = useState<string | null>(null);
   const [showEndMeetingModal, setShowEndMeetingModal] = useState(false); 
   const [kickedUserIds, setKickedUserIds] = useState<Set<string>>(new Set());
 
-  // RAW DATA FROM SOCKET
+  // Socket Data
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set());
 
-  // Deduplicate users to prevent "same key" error
+  // Deduplicate users
   const uniqueOnlineUsers = useMemo(() => {
       const seen = new Set();
       return onlineUsers.filter(u => {
@@ -103,9 +113,12 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
     return participants.filter(p => !kickedUserIds.has(p.identity));
   }, [participants, kickedUserIds]);
 
+  // --- EFFECTS ---
   useEffect(() => {
     activeTabRef.current = activeTab;
     if (activeTab === "chat") setUnreadMessages(0);
+    // Close "More" menu when a tab opens
+    if (activeTab !== "none") setShowMoreMenu(false);
   }, [activeTab]);
 
   useEffect(() => {
@@ -141,7 +154,8 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
            if (prev.some(u => u.socketId === data.socketId)) return prev;
            return [...prev, data];
        });
-       setActiveTab((prev) => (prev === "none" ? "waiting" : prev));
+       // Auto-open waiting tab if host is just sitting there? Maybe annoying.
+       // Instead we show a badge on the More button.
     };
 
     const handleGuestCancelled = ({ socketId }: { socketId: string }) => {
@@ -158,7 +172,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
             userId: uid,
             name: data?.name || "User",
             avatar: data?.avatar || ""
-        })).filter(u => u.userId !== localIdentity); // Filter out myself
+        })).filter(u => u.userId !== localIdentity);
 
         setOnlineUsers(users);
     };
@@ -166,16 +180,10 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
     const handleUserStatus = ({ userId, status, user }: { userId: string, status: string, user?: any }) => {
         setOnlineUsers(prev => {
             if (userId === localIdentity) return prev;
-            
             if (status === "Online" && user) {
                 const otherUsers = prev.filter(u => u.userId !== userId);
-                return [...otherUsers, { 
-                    userId, 
-                    name: user.name || "User", 
-                    avatar: user.avatar || "" 
-                }];
+                return [...otherUsers, { userId, name: user.name || "User", avatar: user.avatar || "" }];
             }
-            
             if (status === "Offline") {
                 return prev.filter(u => u.userId !== userId);
             }
@@ -268,6 +276,26 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
       }, 3000);
   };
 
+  // --- TOGGLES ---
+  const toggleMic = async () => {
+    const enabled = room.localParticipant.isMicrophoneEnabled;
+    await room.localParticipant.setMicrophoneEnabled(!enabled);
+    setIsMicOn(!enabled);
+  }
+
+  const toggleCamera = async () => {
+    const enabled = room.localParticipant.isCameraEnabled;
+    await room.localParticipant.setCameraEnabled(!enabled);
+    setIsVideoOn(!enabled);
+  }
+
+  const toggleScreenShare = async () => {
+      const enabled = room.localParticipant.isScreenShareEnabled;
+      await room.localParticipant.setScreenShareEnabled(!enabled);
+      setIsScreenShare(!enabled);
+      setShowMoreMenu(false);
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
         containerRef.current?.requestFullscreen();
@@ -276,6 +304,7 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
         document.exitFullscreen();
         setIsFullscreen(false);
     }
+    setShowMoreMenu(false);
   };
 
   // --- TRACK LOGIC ---
@@ -304,50 +333,54 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
       );
   }, [safeTracks, mainTrack]);
 
-  const visibleGridTracks = gridTracks.slice(0, 6);
-  const overflowCount = gridTracks.length - 6;
+  // Adjust grid limit based on device, but CSS handles layout
+  const visibleGridTracks = gridTracks.slice(0, 8); 
 
   return (
     <LayoutContextProvider>
-      <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050505] relative overflow-hidden">
+      <div ref={containerRef} className="flex flex-col h-full w-full bg-[#050505] relative overflow-hidden font-sans">
         
-        {/* MODALS */}
+        {/* === MODALS (Kick / End Meeting) === */}
         {kickTarget && (
-            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in">
+            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
                 <div className="bg-[#1a1a1a] border border-white/10 p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Ban className="w-8 h-8 text-red-500" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Remove Participant?</h3>
                     <div className="flex gap-3 mt-6">
-                        <button onClick={() => setKickTarget(null)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition cursor-pointer">Cancel</button>
-                        <button onClick={confirmKick} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition cursor-pointer">Remove</button>
+                        <button onClick={() => setKickTarget(null)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition">Cancel</button>
+                        <button onClick={confirmKick} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition">Remove</button>
                     </div>
                 </div>
             </div>
         )}
         {showEndMeetingModal && (
-            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in">
+            <div className="absolute inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center animate-in fade-in p-4">
                 <div className="bg-[#1a1a1a] border border-white/10 p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center">
                     <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <AlertTriangle className="w-8 h-8 text-red-500" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">End Meeting?</h3>
                     <div className="flex gap-3 mt-6">
-                        <button onClick={() => setShowEndMeetingModal(false)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition cursor-pointer">Cancel</button>
-                        <button onClick={confirmEndMeeting} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition cursor-pointer">End All</button>
+                        <button onClick={() => setShowEndMeetingModal(false)} className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition">Cancel</button>
+                        <button onClick={confirmEndMeeting} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition">End All</button>
                     </div>
                 </div>
             </div>
         )}
 
-        {/* --- MAIN STAGE & GRID --- */}
-        <div className="flex-1 flex flex-row overflow-hidden relative">
-            <div className="flex-1 bg-[#0a0a0a] relative flex items-center justify-center p-4">
+        {/* === CONTENT AREA === */}
+        {/* RESPONSIVE LAYOUT: Column on Mobile, Row on Desktop */}
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+            
+            {/* 1. MAIN STAGE (Takes most space) */}
+            <div className="flex-1 bg-[#0a0a0a] relative flex items-center justify-center p-2 md:p-4 min-h-0">
+                {/* Meeting Info Overlay */}
                 <div className="absolute top-4 left-4 z-20 flex gap-2">
                     <div className="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-white text-xs font-mono flex items-center gap-2">
-                        ID: {roomId.slice(0, 8)}...
-                        <button onClick={() => { navigator.clipboard.writeText(roomId); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="hover:text-red-400 cursor-pointer">
+                        <span className="hidden sm:inline">ID:</span> {roomId.slice(0, 8)}...
+                        <button onClick={() => { navigator.clipboard.writeText(roomId); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="hover:text-red-400">
                             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                         </button>
                     </div>
@@ -368,178 +401,202 @@ function MeetingContent({ roomId, isHost, onLeave, socket }: { roomId: string; i
                 )}
             </div>
 
+            {/* 2. PARTICIPANT GRID */}
+            {/* MOBILE: Horizontal Scroll at Bottom | DESKTOP: Vertical Scroll at Right */}
             {visibleGridTracks.length > 0 && (
-                // 👇 FIXED: Changed "or-w-96" to "md:w-96" for proper responsive width
-                <div className="w-80 md:w-96 bg-[#111] border-l border-white/10 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 shrink-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 auto-rows-[120px]">
-                        {visibleGridTracks.map((track) => (
-                            <div key={track.publication?.trackSid || `${track.participant.identity}_${track.source}`} className="relative rounded-xl overflow-hidden border border-white/10 shadow-md group bg-black">
-                                <CustomParticipantTile trackRef={track} isHost={isHost} isMain={false} onPin={() => setFocusedTrack(track)} onKick={requestKick} hostIdentity={hostIdentity} />
-                            </div>
-                        ))}
-                    </div>
-                    {overflowCount > 0 && (
-                        <div className="w-full py-4 text-center text-white/40 text-xs font-bold bg-white/5 rounded-xl border border-white/5">+{overflowCount} more</div>
+                <div className={cn(
+                    "bg-[#111] border-white/10 shrink-0",
+                    "w-full h-28 md:w-80 md:h-auto md:border-l p-2 md:p-3", // Responsive sizing
+                    "flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto custom-scrollbar" // Scroll direction
+                )}>
+                    {visibleGridTracks.map((track) => (
+                        <div key={track.publication?.trackSid || `${track.participant.identity}_${track.source}`} 
+                             className="relative rounded-xl overflow-hidden border border-white/10 shadow-md group bg-black shrink-0 w-36 h-full md:w-full md:h-32">
+                            <CustomParticipantTile trackRef={track} isHost={isHost} isMain={false} onPin={() => setFocusedTrack(track)} onKick={requestKick} hostIdentity={hostIdentity} />
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+
+        {/* === BOTTOM CONTROL TRAY (FIXED & RESPONSIVE) === */}
+        <div className={cn(
+            "bg-[#121212] border-t border-white/10 p-4 z-40 shrink-0 transition-transform duration-300",
+            activeTab !== "none" ? "translate-y-full md:translate-y-0" : "translate-y-0" // Hide on mobile if tab open
+        )}>
+            <div className="flex items-center justify-between px-6 py-3 max-w-sm mx-auto bg-[#1a1a1a]/95 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl">
+                
+                {/* 1. MORE MENU (...) */}
+                <div className="relative">
+                    <button onClick={() => setShowMoreMenu(!showMoreMenu)} className={cn("p-3 rounded-lg transition-colors relative", showMoreMenu ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10")}>
+                        <MoreHorizontal className="w-6 h-6" />
+                        {/* Global Notification Dot for More Menu */}
+                        {(unreadMessages > 0 || (isHost && waitingUsers.length > 0)) && (
+                            <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-600 rounded-full border border-[#1a1a1a] animate-pulse"></span>
+                        )}
+                    </button>
+
+                    {/* POPUP MENU */}
+                    {showMoreMenu && (
+                         <div className="absolute bottom-full left-0 mb-4 bg-[#252525] border border-white/10 rounded-2xl shadow-xl p-2 min-w-[200px] animate-in slide-in-from-bottom-2 fade-in z-50">
+                            {/* Chat */}
+                            <button onClick={() => setActiveTab("chat")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                <MessageSquare className="w-5 h-5 text-blue-400"/> Chat
+                                {unreadMessages > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadMessages}</span>}
+                            </button>
+                            
+                            {/* Participants */}
+                            <button onClick={() => setActiveTab("participants")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                <Users className="w-5 h-5 text-purple-400"/> People
+                            </button>
+
+                            {/* Invite */}
+                            <button onClick={() => setActiveTab("invite")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                <UserPlus className="w-5 h-5 text-green-400"/> Invite
+                            </button>
+
+                            {/* Screen Share */}
+                            <button onClick={toggleScreenShare} className={cn("flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors", isScreenShare && "text-red-400")}>
+                                <Monitor className="w-5 h-5"/> {isScreenShare ? "Stop Sharing" : "Share Screen"}
+                            </button>
+
+                            {/* Host: Waiting Room */}
+                            {isHost && (
+                                <button onClick={() => setActiveTab("waiting")} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                    <ShieldAlert className="w-5 h-5 text-yellow-400"/> Waiting Room
+                                    {waitingUsers.length > 0 && <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{waitingUsers.length}</span>}
+                                </button>
+                            )}
+
+                            {/* Fullscreen */}
+                            <div className="h-px bg-white/10 my-1"/>
+                            <button onClick={toggleFullscreen} className="flex items-center gap-3 w-full p-3 hover:bg-white/10 rounded-xl text-left text-white text-sm transition-colors">
+                                {isFullscreen ? <Minimize className="w-4 h-4"/> : <Maximize className="w-4 h-4"/>} {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                            </button>
+                         </div>
                     )}
                 </div>
-            )}
+
+                {/* 2. CAMERA */}
+                <button onClick={toggleCamera} className={cn("p-3 rounded-lg transition-colors", isVideoOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                    {isVideoOn ? <Video className="w-6 h-6"/> : <VideoOff className="w-6 h-6"/>}
+                </button>
+
+                {/* 3. MIC */}
+                <button onClick={toggleMic} className={cn("p-3 rounded-lg transition-colors", isMicOn ? "bg-white/10 text-white" : "bg-white text-black")}>
+                    {isMicOn ? <Mic className="w-6 h-6"/> : <MicOff className="w-6 h-6"/>}
+                </button>
+
+                {/* 4. END CALL */}
+                {isHost ? (
+                    <button onClick={handleEndMeetingForAll} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30">
+                        <PhoneOff className="w-6 h-6" />
+                    </button>
+                ) : (
+                    <button onClick={onLeave} className="p-3 rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30">
+                        <PhoneOff className="w-6 h-6" />
+                    </button>
+                )}
+            </div>
         </div>
 
-        {/* --- BOTTOM CONTROL BAR --- */}
-        <div className="h-20 bg-[#121212] border-t border-white/10 px-6 flex items-center justify-center gap-4 z-30 shrink-0">
-            {roomState === ConnectionState.Connected ? (
-                <ControlBar variation="minimal" controls={{ microphone: true, camera: true, screenShare: true }} />
-            ) : (
-                <div className="flex gap-2 opacity-50 pointer-events-none grayscale">
-                    <div className="p-3 bg-white/5 rounded-full"><div className="w-5 h-5 bg-white/20 rounded-full"/></div>
-                    <div className="p-3 bg-white/5 rounded-full"><div className="w-5 h-5 bg-white/20 rounded-full"/></div>
-                </div>
-            )}
-            
-            <div className="w-px h-8 bg-white/10 mx-2" />
-
-            <button onClick={() => setActiveTab(activeTab === "chat" ? "none" : "chat")} className={cn("p-3.5 rounded-xl hover:bg-white/10 text-white transition relative cursor-pointer", activeTab === "chat" ? "bg-red-600" : "bg-white/5")}>
-                <MessageSquare className="w-5 h-5" />
-                {unreadMessages > 0 && activeTab !== "chat" && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce border border-[#121212]">{unreadMessages}</span>}
-            </button>
-
-            <button onClick={() => setActiveTab(activeTab === "participants" ? "none" : "participants")} className={cn("p-3.5 rounded-xl hover:bg-white/10 text-white transition cursor-pointer", activeTab === "participants" ? "bg-red-600" : "bg-white/5")}>
-                <Users className="w-5 h-5" />
-            </button>
-
-            <button onClick={() => setActiveTab(activeTab === "invite" ? "none" : "invite")} className={cn("p-3.5 rounded-xl hover:bg-white/10 text-white transition relative cursor-pointer", activeTab === "invite" ? "bg-red-600" : "bg-white/5")}>
-                <UserPlus className="w-5 h-5" />
-            </button>
-
-            {isHost && (
-                <button onClick={() => setActiveTab(activeTab === "waiting" ? "none" : "waiting")} className={cn("p-3.5 rounded-xl hover:bg-white/10 text-white transition relative cursor-pointer", activeTab === "waiting" ? "bg-red-600" : "bg-white/5")}>
-                    <ShieldAlert className="w-5 h-5" />
-                    {waitingUsers.length > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse border border-[#121212]">{waitingUsers.length}</span>}
-                </button>
-            )}
-
-            <button onClick={toggleFullscreen} className="p-3.5 rounded-xl hover:bg-white/10 text-white bg-white/5 transition cursor-pointer">
-                {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-            </button>
-
-            {isHost ? (
-                <button onClick={handleEndMeetingForAll} className="ml-4 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20 flex items-center gap-2 cursor-pointer">
-                    <PhoneOff className="w-5 h-5" />
-                    <span className="hidden sm:inline">End All</span>
-                </button>
-            ) : (
-                <button onClick={onLeave} className="ml-4 px-6 py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20 flex items-center gap-2 cursor-pointer">
-                    <PhoneOff className="w-5 h-5" />
-                    <span className="hidden sm:inline">Leave</span>
-                </button>
-            )}
-        </div>
-
-        {/* --- RIGHT SIDEBAR --- */}
+        {/* === SIDEBARS / OVERLAYS (Chat, Invite, etc.) === */}
         {activeTab !== "none" && (
-            <div className="absolute top-0 right-0 w-80 h-[calc(100%-5rem)] border-l border-white/10 bg-[#111] flex flex-col animate-in slide-in-from-right z-40 shadow-2xl">
-                <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#161616]">
+            <div className={cn(
+                "fixed inset-0 z-[60] bg-[#1111119c] flex flex-col animate-in slide-in-from-right",
+                "md:absolute md:top-0 md:right-0 md:w-80 md:h-full md:border-l md:border-white/10 md:shadow-2xl" // Desktop: Sidebar, Mobile: Fullscreen Overlay
+            )}>
+                {/* Sidebar Header */}
+                <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#161616] safe-area-top">
                     <h3 className="text-white font-bold capitalize flex items-center gap-2">
                         {activeTab === "waiting" ? "Waiting Room" : activeTab === "invite" ? "Invite Users" : activeTab}
                     </h3>
-                    <button onClick={() => setActiveTab("none")} className="p-1 hover:bg-white/10 rounded-lg transition cursor-pointer"><X className="w-5 h-5 text-white/50" /></button>
+                    <button onClick={() => setActiveTab("none")} className="p-2 hover:bg-white/10 rounded-full transition"><X className="w-6 h-6 text-white/70" /></button>
                 </div>
 
-                {activeTab === "chat" && <InCallChatSidebar onClose={() => setActiveTab("none")} />}
+                {/* Sidebar Content */}
+                <div className="flex-1 overflow-hidden relative">
+                    {activeTab === "chat" && <InCallChatSidebar onClose={() => setActiveTab("none")} />}
 
-                {activeTab === "participants" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                        {activeParticipants.map((p) => {
-                            let avatarUrl = "";
-                            try { const meta = p.metadata ? JSON.parse(p.metadata) : {}; avatarUrl = meta.avatar || ""; } catch(e) {}
-                            return (
-                                <div key={p.identity} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-white font-bold text-xs">
-                                        {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover" /> : (p.name?.[0] || "?")}
+                    {activeTab === "participants" && (
+                        <div className="h-full overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                            {activeParticipants.map((p) => {
+                                let avatarUrl = "";
+                                try { const meta = p.metadata ? JSON.parse(p.metadata) : {}; avatarUrl = meta.avatar || ""; } catch(e) {}
+                                return (
+                                    <div key={p.identity} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                                        <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center text-white font-bold text-xs">
+                                            {avatarUrl ? <img src={avatarUrl} className="w-full h-full object-cover" /> : (p.name?.[0] || "?")}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white text-sm font-medium flex items-center gap-2">{p.name || p.identity} {p.isLocal && <span className="text-white/30 text-xs">(You)</span>}</p>
+                                            <p className="text-[10px] text-white/40">{p.identity === hostIdentity ? "Host" : "Participant"}</p>
+                                        </div>
+                                        {isHost && !p.isLocal && (
+                                            <button onClick={() => requestKick(p.identity)} className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition" title="Kick User"><Ban className="w-4 h-4" /></button>
+                                        )}
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-white text-sm font-medium flex items-center gap-2">{p.name || p.identity} {p.isLocal && <span className="text-white/30 text-xs">(You)</span>}</p>
-                                        <p className="text-[10px] text-white/40">{p.identity === hostIdentity ? "Host" : "Participant"}</p>
-                                    </div>
-                                    {isHost && !p.isLocal && (
-                                        <button onClick={() => requestKick(p.identity)} className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition cursor-pointer" title="Kick User"><Ban className="w-4 h-4" /></button>
-                                    )}
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
+                                )
+                            })}
+                        </div>
+                    )}
 
-                {activeTab === "invite" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                         <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
-                             <p className="text-blue-200 text-xs">Click Invite to send the meeting link directly to a user's chat.</p>
-                         </div>
-                         {uniqueOnlineUsers.length === 0 ? (
-                             <div className="text-center text-white/30 mt-10">
-                                 <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                                 <p className="text-sm">No other users are online right now.</p>
+                    {activeTab === "invite" && (
+                        <div className="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                             <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4">
+                                 <p className="text-blue-200 text-xs">Send meeting link directly to a user's chat.</p>
                              </div>
-                         ) : (
-                             uniqueOnlineUsers.map((u) => {
-                                 const isSent = invitedUserIds.has(u.userId);
-                                 const displayName = u.name || "User";
-                                 const firstChar = displayName.charAt(0) || "?";
-
-                                 return (
-                                     <div key={u.userId} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                                         <div className="flex items-center gap-3">
-                                             <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center text-xs text-white font-bold border border-white/10">
-                                                 {u.avatar ? (
-                                                     <img src={u.avatar} alt={displayName} className="w-full h-full object-cover" />
-                                                 ) : (
-                                                     firstChar
-                                                 )}
+                             {uniqueOnlineUsers.length === 0 ? (
+                                 <div className="text-center text-white/30 mt-10">
+                                     <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                                     <p className="text-sm">No other users online.</p>
+                                 </div>
+                             ) : (
+                                 uniqueOnlineUsers.map((u) => {
+                                     const isSent = invitedUserIds.has(u.userId);
+                                     return (
+                                         <div key={u.userId} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
+                                             <div className="flex items-center gap-3">
+                                                 <div className="w-8 h-8 rounded-full bg-zinc-800 overflow-hidden flex items-center justify-center text-xs text-white font-bold">
+                                                     {u.avatar ? <img src={u.avatar} className="w-full h-full object-cover" /> : u.name?.[0] || "?"}
+                                                 </div>
+                                                 <div>
+                                                     <p className="text-white text-sm font-medium truncate w-24">{u.name}</p>
+                                                     <p className="text-[10px] text-green-400">Online</p>
+                                                 </div>
                                              </div>
-                                             <div className="min-w-0">
-                                                 <p className="text-white text-sm font-medium truncate w-24" title={displayName}>{displayName}</p>
-                                                 <p className="text-[10px] text-green-400">Online</p>
-                                             </div>
+                                             <button onClick={() => handleSendInvite(u.userId)} disabled={isSent} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1", isSent ? "bg-green-500/20 text-green-500 cursor-default" : "bg-blue-600 hover:bg-blue-700 text-white")}>
+                                                 {isSent ? <Check className="w-3 h-3" /> : <Send className="w-3 h-3" />} {isSent ? "Sent" : "Invite"}
+                                             </button>
                                          </div>
-                                         <button 
-                                             onClick={() => handleSendInvite(u.userId)}
-                                             disabled={isSent}
-                                             className={cn(
-                                                 "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1",
-                                                 isSent ? "bg-green-500/20 text-green-500 cursor-default" : "bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                                             )}
-                                         >
-                                             {isSent ? <Check className="w-3 h-3" /> : <Send className="w-3 h-3" />}
-                                             {isSent ? "Sent" : "Invite"}
-                                         </button>
-                                     </div>
-                                 );
-                             })
-                         )}
-                    </div>
-                )}
+                                     );
+                                 })
+                             )}
+                        </div>
+                    )}
 
-                {activeTab === "waiting" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {waitingUsers.length === 0 ? <p className="text-center text-white/30 text-sm mt-10">No one is waiting.</p> : waitingUsers.map((req) => (
-                            <div key={req.socketId} className="bg-white/5 p-4 rounded-xl border border-white/10">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center text-xs font-bold text-white">
-                                        {req.user.avatar ? <img src={req.user.avatar} className="w-full h-full object-cover" /> : (req.user.name?.[0] || "?")}
+                    {activeTab === "waiting" && (
+                        <div className="h-full overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                            {waitingUsers.length === 0 ? <p className="text-center text-white/30 text-sm mt-10">No one is waiting.</p> : waitingUsers.map((req) => (
+                                <div key={req.socketId} className="bg-white/5 p-4 rounded-xl border border-white/10">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-8 h-8 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center text-xs font-bold text-white">
+                                            {req.user.avatar ? <img src={req.user.avatar} className="w-full h-full object-cover" /> : (req.user.name?.[0] || "?")}
+                                        </div>
+                                        <div>
+                                            <p className="text-white text-sm font-bold">{req.user?.name || "Guest"}</p>
+                                            <p className="text-[10px] text-white/40">Wants to join...</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-white text-sm font-bold">{req.user?.name || "Guest"}</p>
-                                        <p className="text-[10px] text-white/40">Wants to join...</p>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleAdmit(req.socketId)} className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg">Admit</button>
+                                        <button onClick={() => handleReject(req.socketId)} className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg">Deny</button>
                                     </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => handleAdmit(req.socketId)} className="flex-1 bg-green-600 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Admit</button>
-                                    <button onClick={() => handleReject(req.socketId)} className="flex-1 bg-red-600 text-white text-xs font-bold py-2 rounded-lg cursor-pointer">Deny</button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         )}
       </div>
@@ -558,25 +615,24 @@ function CustomParticipantTile({ trackRef, isHost, isMain, onPin, onKick, hostId
     try { const meta = participant.metadata ? JSON.parse(participant.metadata) : {}; avatarUrl = meta.avatar || ""; } catch(e) {}
 
     return (
-        <div className={cn("relative w-full h-full group bg-black transition-all duration-300", (isSpeaking && isVideoEnabled) ? "ring-4 ring-inset ring-green-500" : "")}>
+        <div className={cn("relative w-full h-full group bg-black transition-all duration-300", (isSpeaking && isVideoEnabled) ? "ring-2 md:ring-4 ring-inset ring-green-500" : "")}>
             {isVideoEnabled ? (
-                // Use object-cover to fill the tile properly like standard meeting apps
                 <VideoTrack trackRef={trackRef} className="w-full h-full object-cover bg-black" />
             ) : (
-                <div className="w-full h-full flex items-center justify-center flex-col gap-4 bg-[#111]">
-                    <div className={cn("w-20 h-20 rounded-full overflow-hidden border-2 border-white/10 relative", isSpeaking && "animate-pulse ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]")}>
-                        {avatarUrl ? <img src={avatarUrl} alt="User" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold text-white">{participant.name?.[0] || "?"}</div>}
+                <div className="w-full h-full flex items-center justify-center flex-col gap-2 md:gap-4 bg-[#111]">
+                    <div className={cn("w-12 h-12 md:w-20 md:h-20 rounded-full overflow-hidden border-2 border-white/10 relative", isSpeaking && "animate-pulse ring-4 ring-green-500 shadow-[0_0_20px_rgba(34,197,94,0.6)]")}>
+                        {avatarUrl ? <img src={avatarUrl} alt="User" className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xl md:text-2xl font-bold text-white">{participant.name?.[0] || "?"}</div>}
                     </div>
-                    <p className="text-white/50 text-sm">Camera Off</p>
+                    {isMain && <p className="text-white/50 text-xs md:text-sm">Camera Off</p>}
                 </div>
             )}
-            <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded-md text-white text-xs font-bold flex items-center gap-1 pointer-events-none z-20">
+            <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded-md text-white text-[10px] md:text-xs font-bold flex items-center gap-1 pointer-events-none z-20">
                 {isHostUser && <Crown className="w-3 h-3 text-yellow-400" />} {participant.name || participant.identity} {participant.isLocal && " (You)"}
             </div>
             <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <button onClick={(e) => { e.stopPropagation(); onPin(); }} className="bg-black/60 p-1.5 rounded-lg text-white hover:bg-white/20 cursor-pointer" title={isMain ? "Unpin" : "Pin"}><Pin className={cn("w-4 h-4", isMain ? "fill-white" : "")} /></button>
+                <button onClick={(e) => { e.stopPropagation(); onPin(); }} className="bg-black/60 p-1.5 rounded-lg text-white hover:bg-white/20 cursor-pointer" title={isMain ? "Unpin" : "Pin"}><Pin className={cn("w-3 h-3 md:w-4 md:h-4", isMain ? "fill-white" : "")} /></button>
                 {isHost && !participant.isLocal && (
-                    <button onClick={(e) => { e.stopPropagation(); onKick(participant.identity); }} className="bg-red-600/80 p-1.5 rounded-lg text-white hover:bg-red-600 cursor-pointer" title="Kick User"><Ban className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); onKick(participant.identity); }} className="bg-red-600/80 p-1.5 rounded-lg text-white hover:bg-red-600 cursor-pointer" title="Kick User"><Ban className="w-3 h-3 md:w-4 md:h-4" /></button>
                 )}
             </div>
         </div>

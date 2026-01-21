@@ -15,13 +15,9 @@ export default function InCallChatSidebar({ onClose }: { onClose: () => void }) 
   };
 
   return (
-    <div className="w-80 bg-[#1a1a1a] border-l border-white/10 flex flex-col h-full animate-in slide-in-from-right">
+    <div className="bg-[#191212a5] border-r-2 border-white/10 flex flex-col h-full animate-in slide-in-from-right">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex justify-between items-center">
-        <h3 className="text-white font-bold">Group Chat</h3>
-        <button onClick={onClose} className="text-white/50 hover:text-white"><X className="w-5 h-5"/></button>
-      </div>
-
+      
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         {chatMessages.map((msg, i) => {
