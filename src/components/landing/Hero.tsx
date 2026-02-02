@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import Spline from "@splinetool/react-spline";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Star, ChevronsDown } from "lucide-react";
+import { ArrowRight, Sparkles, Star, ChevronsDown, X, Maximize2, Minimize2 } from "lucide-react";
 
 export const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const leftContentRef = useRef<HTMLDivElement>(null);
   const rightContentRef = useRef<HTMLDivElement>(null);
+
+  // --- MODAL STATE ---
+  // Modes: "hidden" | "normal" | "minimized" | "maximized"
+  const [viewMode, setViewMode] = useState<"hidden" | "normal" | "minimized" | "maximized">("hidden");
 
   useGSAP(() => {
     const tl = gsap.timeline({ defaults: { ease: "power2.out" } });
@@ -31,66 +35,43 @@ export const Hero = () => {
     );
   }, []);
 
-  // --- CUSTOM SMOOTH SCROLL FUNCTION ---
+  // --- SMOOTH SCROLL ---
   const handleScrollDown = () => {
     const featureSection = document.getElementById("about");
+    const targetPosition = featureSection 
+      ? featureSection.getBoundingClientRect().top + window.scrollY 
+      : window.scrollY + window.innerHeight;
     
-    if (featureSection) {
-      const targetPosition = featureSection.getBoundingClientRect().top + window.scrollY;
-      const scrollObj = { y: window.scrollY };
-      
-      gsap.to(scrollObj, {
-        y: targetPosition,
-        duration: 1.5,
-        ease: "power3.inOut",
-        onUpdate: () => {
-          window.scrollTo(0, scrollObj.y);
-        }
-      });
-    } else {
-      const scrollObj = { y: window.scrollY };
-      gsap.to(scrollObj, {
-        y: window.scrollY + window.innerHeight,
-        duration: 1.2,
-        ease: "power2.inOut",
-        onUpdate: () => {
-           window.scrollTo(0, scrollObj.y);
-        }
-      });
-    }
+    const scrollObj = { y: window.scrollY };
+    gsap.to(scrollObj, {
+      y: targetPosition,
+      duration: 1.5,
+      ease: "power3.inOut",
+      onUpdate: () => window.scrollTo(0, scrollObj.y)
+    });
   };
 
   return (
     <section id="hero"
       ref={containerRef}
-      // Changed: h-screen to h-[100svh] for better mobile browser support
       className="relative h-[100svh] w-full overflow-hidden"
     >
       {/* 3D Background Layer */}
       <div className="absolute inset-0 z-0 h-full w-full flex items-center justify-center pointer-events-none">
-         {/* MOBILE FIX: 
-            1. scale-125 (Mobile) -> scale-190 (Desktop/lg) to make room for text.
-            2. translate-y-10 (Mobile) -> translate-y-0 (Desktop) to push robot down slightly.
-         */}
          <div className="relative w-full h-full scale-135 lg:scale-190 translate-x-0 translate-y-38 lg:-translate-x-15 lg:translate-y-0 transition-transform duration-700">
             <Spline scene="https://prod.spline.design/S5F2s4yId-8dZbvp/scene.splinecode" />
          </div>
-         {/* Darkened overlay on mobile to make text pop against the robot */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 lg:from-fuchsia-900/20 lg:to-black/40" />
       </div>
 
-      {/* Main Grid Layout */}
-      {/* Added flex flex-col for mobile to manage vertical stacking explicitly */}
+      {/* Main Content Layout */}
       <div className="relative z-10 h-full w-full max-w-[1600px] mx-auto px-6 md:px-12 flex flex-col lg:grid lg:grid-cols-12 pointer-events-none">
         
-        {/* --- LEFT CONTENT (Top on Mobile) --- */}
+        {/* --- LEFT CONTENT --- */}
         <div 
           ref={leftContentRef} 
-          // MOBILE: justify-start (top), pt-24 (space for navbar), h-1/2 (take top half)
-          // DESKTOP: justify-center, pt-20, col-span-4
           className="h-[55%] lg:h-auto lg:col-span-4 flex flex-col justify-start lg:justify-center items-center text-center lg:items-start lg:text-left pt-28 lg:pt-20 pointer-events-auto"
         >
-          {/* Heading */}
           <h1 className="text-4xl md:text-8xl font-bold tracking-tighter text-white mb-4 lg:mb-8 leading-none">
             <span className="whitespace-nowrap ml-0 lg:-ml-2">Craft Reality</span>
             <br />
@@ -103,28 +84,29 @@ export const Hero = () => {
             </span>
           </h1>
 
-          {/* Paragraph: Smaller text on mobile, tighter margins */}
           <p className="lg:text-lg text-white/70 lg:text-white/60 mb-6 lg:mb-10 max-w-xs lg:max-w-lg leading-relaxed">
             The ultimate workspace uniting real-time communication with powerful AI tools.
-             From HD group meetings to instant image generation, manage your entire digital life in one place
           </p>
 
-          {/* Buttons: Smaller padding on mobile */}
           <div className="flex flex-row items-center gap-3 lg:gap-4">
             <Link
               href="/dashboard"
-              className="px-4 py-3 lg:px-5 lg:py-4 rounded-full bg-white text-black font-bold text-sm lg:text-lg hover:bg-indigo-50 transition-all hover:scale-98 flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.3)]"
+              className="px-4 py-3 lg:px-5 lg:py-4 rounded-full bg-white text-black font-bold text-sm lg:text-lg hover:bg-indigo-50 transition-all hover:scale-98 flex items-center gap-2 shadow-xl"
             >
               Get Started <ArrowRight className="w-4 h-4 lg:w-5 lg:h-5" />
             </Link>
             
-            <button className="px-5 py-3 lg:px-8 lg:py-4 rounded-full border-2 border-white/20 text-white font-medium text-sm lg:text-base hover:bg-white/10 transition-colors backdrop-blur-sm cursor-pointer">
+            {/* DEMO BUTTON - Now triggers setViewMode correctly */}
+            <button 
+              onClick={() => setViewMode("normal")}
+              className="px-5 py-3 lg:px-8 lg:py-4 rounded-full border-2 border-white/20 text-white font-medium text-sm lg:text-base hover:bg-white/10 transition-colors backdrop-blur-sm cursor-pointer"
+            >
               Demo
             </button>
           </div>
         </div>
 
-        {/* --- MIDDLE SPACER --- */}
+            {/* --- MIDDLE SPACER --- */}
         <div className="hidden lg:block lg:col-span-4 h-full"></div>
 
         {/* --- RIGHT CONTENT (Bottom on Mobile) --- */}
@@ -135,7 +117,7 @@ export const Hero = () => {
           className="h-[45%] lg:h-auto lg:col-span-4 flex flex-col justify-end lg:justify-center items-center text-center lg:items-end lg:text-right pointer-events-auto pb-24 lg:pb-0 lg:mt-0"
         >
           {/* NexaOne AI Heading */}
-          <h2 className="text-4xl lg:text-8xl lg:mt-13 whitespace-nowrap font-bold tracking-tighter">
+          <h2 className="text-4xl lg:text-8xl lg:mt-29 whitespace-nowrap font-bold tracking-tighter">
             NexaOne <br />
             <span className="text-transparent mr-0 lg:mr-38 bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
               AI
@@ -168,17 +150,75 @@ export const Hero = () => {
         </div>
       </div>
 
-      {/* --- SCROLL DOWN BUTTON --- */}
+    {/* --- VIDEO POPUP MODAL --- */}
+      {viewMode !== "hidden" && (
+        <div className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-500 
+          ${viewMode === "minimized" ? "pointer-events-none" : "bg-black/20 backdrop-blur-md pointer-events-auto"}`}
+        >
+          <div 
+            className={`bg-[#0c0c0c] border-5 border-white/20 shadow-2xl overflow-hidden transition-all duration-500 ease-in-out flex flex-col
+            ${viewMode === "normal" ? "w-[95%] md:w-[80%] max-w-5xl aspect-video rounded-2xl" : ""}
+            ${viewMode === "maximized" ? "w-full h-full rounded-none" : ""}
+            ${viewMode === "minimized" ? "fixed bottom-6 right-6 w-[300px] md:w-[400px] aspect-video rounded-xl pointer-events-auto shadow-black shadow-2xl" : ""}
+          `}
+          >
+            {/* Header Control Bar */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#161616] border-b border-white/5">
+              <div className="flex items-center gap-3">
+                {/* Red: Close */}
+                <button 
+                  onClick={() => setViewMode("hidden")}
+                  className="w-3 h-3 rounded-full bg-[#ff0d00] hover:brightness-110 flex items-center justify-center group pointer-events-auto cursor-pointer"
+                >
+                  <X className="w-2 h-2 text-black opacity-0 group-hover:opacity-100" />
+                </button>
+                
+                {/* Yellow: Minimize */}
+                <button 
+                  onClick={() => setViewMode(viewMode === "minimized" ? "normal" : "minimized")}
+                  className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:brightness-110 flex items-center justify-center group pointer-events-auto cursor-pointer"
+                >
+                  <Minimize2 className="w-2 h-2 text-black opacity-0 group-hover:opacity-100" />
+                </button>
+                
+                {/* Green: Maximize */}
+                <button 
+                  onClick={() => setViewMode(viewMode === "maximized" ? "normal" : "maximized")}
+                  className="w-3 h-3 rounded-full bg-[#27c93f] hover:brightness-110 flex items-center justify-center group pointer-events-auto cursor-pointer"
+                >
+                  <Maximize2 className="w-2 h-2 text-black opacity-0 group-hover:opacity-100" />
+                </button>
+              </div>
+              <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">nexaone.ai</p>
+              <div className="w-12"></div>
+            </div>
+
+            {/* YouTube Embed Content */}
+            <div className="relative flex-1 bg-black">
+              {/* We only render the iframe if viewMode is not hidden to stop playback on close */}
+              <iframe
+                className="w-full h-full"
+                src="https://www.youtube.com/embed/be0zH8CWwVo?autoplay=1&modestbranding=1&rel=0"
+                title="NexaOne AI Demo"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SCROLL BUTTON --- */}
       <button 
         onClick={handleScrollDown}
-        // Bottom-4 on mobile, Bottom-8 on desktop
-        className="absolute bottom-4 lg:bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 lg:gap-2 text-white/60 hover:text-white transition-colors duration-900 animate-bounce cursor-pointer pointer-events-auto"
-        aria-label="Scroll to features"
+        className="absolute bottom-4 lg:bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1 text-white/60 hover:text-white transition-all animate-bounce cursor-pointer pointer-events-auto"
       >
-        <span className="text-[10px] lg:text-xs font-medium tracking-widest uppercase">Scroll</span>
+        <span className="text-[10px] font-medium tracking-widest uppercase">Scroll</span>
         <ChevronsDown className="w-5 h-5 lg:w-6 lg:h-6" />
       </button>
 
     </section>
   );
 };
+
