@@ -61,7 +61,7 @@ export default async function AdminOverviewPage() {
         <DashboardCard title="Total Users" value={userCount} subtext="All time users" icon={Users} color="text-indigo-400" />
         <DashboardCard title="AI Generations" value={historyCount} subtext="All time requests" icon={Activity} color="text-pink-500" />
         <DashboardCard title="Credits Outstanding" value={totalCredits} subtext="Global Balance" icon={CreditCard} color="text-yellow-500" />
-        <DashboardCard title="Revenue" value={`$${totalRevenue}`} subtext="Lifetime Earnings" icon={DollarSign} color="text-green-500" />
+        <DashboardCard title="Revenue" value={`₹${totalRevenue}`} subtext="Lifetime Earnings" icon={DollarSign} color="text-green-500" />
       </div>
 
       {/* 📊 CHARTS SECTION */}
